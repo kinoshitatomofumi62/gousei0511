@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Trig Synth Warrior</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" rel="stylesheet" />
+  
+  <link rel="preload" as="image" href="https://cdn.jsdelivr.net/gh/kinoshitatomofumi62/my-assets@main/aae0.png">
+  <link rel="preload" as="image" href="https://cdn.jsdelivr.net/gh/kinoshitatomofumi62/my-assets@main/aae1.png">
+  <link rel="preload" as="image" href="https://cdn.jsdelivr.net/gh/kinoshitatomofumi62/my-assets@main/aae2.png">
+  <link rel="preload" as="image" href="https://cdn.jsdelivr.net/gh/kinoshitatomofumi62/my-assets@main/aae3.png">
+  <link rel="preload" as="image" href="https://cdn.jsdelivr.net/gh/kinoshitatomofumi62/my-assets@main/aae4.png">
+  <link rel="preload" as="image" href="https://cdn.jsdelivr.net/gh/kinoshitatomofumi62/my-assets@main/aae5.png">
+
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Press Start 2P', cursive;
+      background-color: #050505; color: #e0e0e0;
+      overflow: hidden; touch-action: manipulation; user-select: none; -webkit-user-select: none;
+    }
+    .scanlines::before {
+      content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+      z-index: 50; background-size: 100% 2px, 3px 100%; pointer-events: none;
+    }
+
+    /* Animations */
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    @keyframes lunge {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.2) translateY(20px); }
+      100% { transform: scale(1); }
+    }
+    @keyframes shake {
+      0% { transform: translate(1px, 1px) rotate(0deg); }
+      10% { transform: translate(-1px, -2px) rotate(-1deg); }
+      20% { transform: translate(-3px, 0px) rotate(1deg); }
+      30% { transform: translate(3px, 2px) rotate(0deg); }
+      40% { transform: translate(1px, -1px) rotate(1deg); }
+      50% { transform: translate(-1px, 2px) rotate(-1deg); }
+      60% { transform: translate(-3px, 1px) rotate(0deg); }
+      70% { transform: translate(3px, 1px) rotate(-1deg); }
+      80% { transform: translate(-1px, -1px) rotate(1deg); }
+      90% { transform: translate(1px, 2px) rotate(0deg); }
+      100% { transform: translate(1px, -2px) rotate(-1deg); }
+    }
+    @keyframes screen-shake {
+      10%, 90% { transform: translate3d(-1px, 0, 0); }
+      20%, 80% { transform: translate3d(2px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+      40%, 60% { transform: translate3d(4px, 0, 0); }
+    }
+    @keyframes fall {
+      0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+    }
+
+    .animate-\\[float_3s_ease-in-out_infinite\\] { animation: float 3s ease-in-out infinite; }
+    .animate-\\[lunge_0\\.3s_ease-in-out\\] { animation: lunge 0.3s ease-in-out; }
+    .animate-\\[shake_0\\.5s\\] { animation: shake 0.5s; }
+    .animate-\\[screen-shake_0\\.5s_cubic-bezier\\(\\.36\\,\\.07\\,\\.19\\,\\.97\\)_both\\] { animation: screen-shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+    .animate-\\[pulse_0\\.5s_ease-in-out_infinite\\] { animation: pulse 0.5s ease-in-out infinite; }
+
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #111; }
+    ::-webkit-scrollbar-thumb { background: #00bcd4; }
+    
+    .neon-blue { text-shadow: 0 0 5px #00bcd4, 0 0 10px #00bcd4; }
+    .neon-red { text-shadow: 0 0 5px #ff0055, 0 0 10px #ff0055; }
+    .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+    
+    .confetti {
+      position: absolute; width: 8px; height: 8px;
+      top: -10px; opacity: 0.8; animation: fall linear infinite;
+    }
+  </style>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "react": "https://esm.sh/react@18.2.0",
+      "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+      "lucide-react": "https://esm.sh/lucide-react@0.263.1?deps=react@18.2.0",
+      "katex": "https://esm.sh/katex@0.16.8"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" data-type="module">
+    import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
+    import { createRoot } from 'react-dom/client';
+    import { Heart, RefreshCw, Frown, Clock, Plus, Minus, Play, Trophy, Star, Delete, CornerDownLeft, Home } from 'lucide-react';
+    import katex from 'katex';
+
+    const cn = (...args) => args.filter(Boolean).join(' ');
+
+    const MathLabel = memo(function MathLabel({ latex, className, displayMode = false }) {
+        const html = katex.renderToString(latex, { displayMode, throwOnError: false });
+        return <div className={className} dangerouslySetInnerHTML={{ __html: html }} />;
+    });
+
+    const GamePhase = {
+      START: 'START',
+      PLAYING: 'PLAYING',
+      VICTORY: 'VICTORY',
+      GAME_OVER: 'GAME_OVER',
+    };
+
+    const ASSETS = {
+      NORMAL: "https://cdn.jsdelivr.net/gh/kinoshitatomofumi62/my-assets@main/aae0.png",
+      ATTACK: "https://cdn.jsdelivr.net/gh/kinoshitatomofumi62/my-assets@main/aae2.png",
+      HIT: "https://cdn.jsdelivr.net/gh/kinoshitatomofumi62/my-assets@main/aae1.png",
+      DEFEAT: "https://cdn.jsdelivr.net/gh/kinoshitatomofumi62/my-assets@main/aae3.png",
+      WIN_MISS: "https://cdn.jsdelivr.net/gh/kinoshitatomofumi62/my-assets@main/aae4.png",
+      WIN_PERFECT: "https://cdn.jsdelivr.net/gh/kinoshitatomofumi62/my-assets@main/aae5.png",
+    };
+
+    const BASE_TEMPLATES = [
+      { a: 1, aLatex: "", b: 1, bLatex: "", rBase: Math.SQRT2, alphaLabel: "\\frac{\\pi}{4}", alphaSign: 1 },
+      { a: 1, aLatex: "", b: -1, bLatex: "-", rBase: Math.SQRT2, alphaLabel: "\\frac{\\pi}{4}", alphaSign: -1 },
+      { a: -1, aLatex: "-", b: 1, bLatex: "", rBase: Math.SQRT2, alphaLabel: "\\frac{3\\pi}{4}", alphaSign: 1 },
+      { a: -1, aLatex: "-", b: -1, bLatex: "-", rBase: Math.SQRT2, alphaLabel: "\\frac{3\\pi}{4}", alphaSign: -1 },
+      { a: Math.sqrt(3), aLatex: "\\sqrt{3}", b: 1, bLatex: "", rBase: 2, alphaLabel: "\\frac{\\pi}{6}", alphaSign: 1 },
+      { a: 1, aLatex: "", b: Math.sqrt(3), bLatex: "\\sqrt{3}", rBase: 2, alphaLabel: "\\frac{\\pi}{3}", alphaSign: 1 },
+      { a: Math.sqrt(3), aLatex: "\\sqrt{3}", b: -1, bLatex: "-", rBase: 2, alphaLabel: "\\frac{\\pi}{6}", alphaSign: -1 },
+      { a: 1, aLatex: "", b: -Math.sqrt(3), bLatex: "-\\sqrt{3}", rBase: 2, alphaLabel: "\\frac{\\pi}{3}", alphaSign: -1 },
+      { a: -Math.sqrt(3), aLatex: "-\\sqrt{3}", b: 1, bLatex: "", rBase: 2, alphaLabel: "\\frac{5\\pi}{6}", alphaSign: 1 },
+      { a: -1, aLatex: "-", b: Math.sqrt(3), bLatex: "\\sqrt{3}", rBase: 2, alphaLabel: "\\frac{2\\pi}{3}", alphaSign: 1 },
+      { a: -Math.sqrt(3), aLatex: "-\\sqrt{3}", b: -1, bLatex: "-", rBase: 2, alphaLabel: "\\frac{5\\pi}{6}", alphaSign: -1 },
+      { a: -1, aLatex: "-", b: -Math.sqrt(3), bLatex: "-\\sqrt{3}", rBase: 2, alphaLabel: "\\frac{2\\pi}{3}", alphaSign: -1 },
+    ];
+
+    const ALPHA_CHOICES = [
+      { label: "\\frac{\\pi}{6}", value: Math.PI / 6 },
+      { label: "\\frac{\\pi}{4}", value: Math.PI / 4 },
+      { label: "\\frac{\\pi}{3}", value: Math.PI / 3 },
+      { label: "\\frac{2\\pi}{3}", value: (2 * Math.PI) / 3 },
+      { label: "\\frac{3\\pi}{4}", value: (3 * Math.PI) / 4 },
+      { label: "\\frac{5\\pi}{6}", value: (5 * Math.PI) / 6 },
+    ];
+
+    const generateProblem = () => {
+      const template = BASE_TEMPLATES[Math.floor(Math.random() * BASE_TEMPLATES.length)];
+      const scale = Math.floor(Math.random() * 3) + 1;
+
+      const formatTerm = (baseLatex, isFirst, val) => {
+          let s = "";
+          const isNeg = val < 0;
+          if (isFirst) {
+              if (isNeg) s += "-";
+          } else {
+              s += isNeg ? " - " : " + ";
+          }
+          if (baseLatex === "" || baseLatex === "-" || baseLatex === "-\\sqrt{3}" || baseLatex === "\\sqrt{3}") {
+              if (baseLatex.includes("sqrt")) {
+                 if (scale > 1) s += scale.toString();
+                 s += "\\sqrt{3}";
+              } else {
+                 if (scale > 1) s += scale.toString();
+              }
+          }
+          return s;
+      };
+
+      let latexA = formatTerm(template.aLatex, true, template.a);
+      let latexB = formatTerm(template.bLatex, false, template.b);
+      let problemLatex = `${latexA}\\sin\\theta${latexB}\\cos\\theta`;
+      let correctR = "";
+      if (Math.abs(template.rBase - 2) < 0.01) {
+          correctR = (2 * scale).toString();
+      } else {
+          correctR = (scale === 1 ? "" : scale.toString()) + "\\sqrt{2}";
+      }
+      const op = template.alphaSign === 1 ? "+" : "-";
+      const correctAlpha = op + template.alphaLabel;
+
+      return {
+        id: Math.random().toString(36).substring(7),
+        a: template.a * scale,
+        b: template.b * scale,
+        latex: problemLatex,
+        correctR,
+        correctAlpha
+      };
+    };
+
+    const evaluateInput = (inputR, inputOperator, inputAlpha, problem) => {
+      let r = inputR.replace(/\s/g, ''); 
+      if (r.startsWith("1\\sqrt")) r = r.substring(1);
+      if (!inputAlpha) return false;
+      const alphaCombined = inputOperator + inputAlpha;
+      return r === problem.correctR && alphaCombined === problem.correctAlpha;
+    };
+
+    const MonsterDisplay = memo(function MonsterDisplay({ state, className }) {
+      let src = ASSETS.NORMAL;
+      if (state === 'hit') src = ASSETS.HIT;
+      if (state === 'attack') src = ASSETS.ATTACK;
+      let animClass = "";
+      if (state === 'idle') animClass = "animate-[float_3s_ease-in-out_infinite]";
+      if (state === 'attack') animClass = "animate-[lunge_0.3s_ease-in-out]";
+      if (state === 'hit') animClass = "animate-[shake_0.5s] brightness-150";
+      if (state === 'dead') animClass = "opacity-50 grayscale";
+      return (
+        <div className={cn('relative flex justify-center items-center', className)}>
+          <img src={src} alt="Monster" className={cn("w-full h-full object-contain drop-shadow-[0_0_15px_rgba(0,188,212,0.4)] transition-all duration-200", animClass)} />
+        </div>
+      );
+    });
+
+    function Keypad({ mode, onPress, onDelete, onSubmit }) {
+      const btnClass = "bg-gray-800 border-2 border-cyan-700 text-cyan-400 font-bold p-0.5 active:bg-cyan-900 active:border-cyan-400 rounded shadow-[0_0_5px_rgba(0,188,212,0.2)] transition-colors flex items-center justify-center select-none cursor-pointer";
+      const numBtnClass = `${btnClass} text-lg h-10`; 
+      const alphaBtnClass = `${btnClass} h-11`; 
+      if (mode === 'r') {
+        return (
+          <div className="grid grid-cols-4 gap-1 p-0.5 max-w-sm mx-auto w-full">
+            <button className={numBtnClass} onClick={() => onPress('7')}>7</button>
+            <button className={numBtnClass} onClick={() => onPress('8')}>8</button>
+            <button className={numBtnClass} onClick={() => onPress('9')}>9</button>
+            <button className={`${numBtnClass} text-red-400 border-red-600`} onClick={onDelete}><Delete size={18} /></button>
+            <button className={numBtnClass} onClick={() => onPress('4')}>4</button>
+            <button className={numBtnClass} onClick={() => onPress('5')}>5</button>
+            <button className={numBtnClass} onClick={() => onPress('6')}>6</button>
+            <button className={`${numBtnClass} bg-cyan-900 text-white border-cyan-400`} onClick={onSubmit}><CornerDownLeft size={18} /></button>
+            <button className={numBtnClass} onClick={() => onPress('1')}>1</button>
+            <button className={numBtnClass} onClick={() => onPress('2')}>2</button>
+            <button className={numBtnClass} onClick={() => onPress('3')}>3</button>
+            <button className={`${numBtnClass} text-yellow-400 border-yellow-600 text-sm`} onClick={() => onPress('\\sqrt{2}')}>√2</button>
+            <button className={`${numBtnClass} text-yellow-400 border-yellow-600 text-sm`} onClick={() => onPress('\\sqrt{3}')}>√3</button>
+            <div className="col-span-3 grid grid-cols-3 gap-1">
+               <button className={`${numBtnClass} col-start-2`} onClick={() => onPress('0')}>0</button>
+            </div>
+          </div>
+        );
+      }
+      return (
+        <div className="grid grid-cols-3 gap-1.5 p-0.5 max-w-sm mx-auto w-full">
+          {ALPHA_CHOICES.map((choice) => (
+            <button key={choice.label} className={alphaBtnClass} onClick={() => onPress(choice.label)}>
+               <MathLabel latex={choice.label} className="pointer-events-none scale-75 origin-center" />
+            </button>
+          ))}
+          <button className={`${alphaBtnClass} text-red-400 border-red-600`} onClick={onDelete}><Delete size={18} /></button>
+          <div className="flex items-center justify-center text-gray-600 text-[10px]">SELECT</div>
+          <button className={`${alphaBtnClass} bg-cyan-900 text-white border-cyan-400`} onClick={onSubmit}><CornerDownLeft size={18} /></button>
+        </div>
+      );
+    }
+
+    const MAX_HP = 2;
+    const MAX_TIME = 30;
+    const TOTAL_STAGES = 5;
+
+    function App() {
+      const [gameState, setGameState] = useState({
+        phase: GamePhase.START, currentStage: 1, hp: MAX_HP,
+        score: 0, timeLeft: MAX_TIME, totalMistakes: 0, mistakeHistory: [], combo: 0
+      });
+      const [currentProblem, setCurrentProblem] = useState(null);
+      const [inputR, setInputR] = useState('');
+      const [inputOperator, setInputOperator] = useState('+');
+      const [inputAlpha, setInputAlpha] = useState(''); 
+      const [activeField, setActiveField] = useState('r');
+      const [monsterState, setMonsterState] = useState('idle');
+      const [feedback, setFeedback] = useState('none');
+      const [screenShake, setScreenShake] = useState(false);
+      const [highScore, setHighScore] = useState(() => parseInt(localStorage.getItem('trig_synth_high_score') || '0', 10));
+      const [isNewRecord, setIsNewRecord] = useState(false);
+
+      const timerRef = useRef(null);
+      const handleWrongRef = useRef(() => {});
+
+      const stopTimer = useCallback(() => {
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+      }, []);
+
+      const startTimer = useCallback(() => {
+        stopTimer();
+        let lastTick = Date.now();
+        timerRef.current = setInterval(() => {
+          const now = Date.now();
+          const delta = (now - lastTick) / 1000;
+          lastTick = now;
+          setGameState(prev => {
+            if (prev.phase !== GamePhase.PLAYING) return prev;
+            const updatedTime = Math.max(0, prev.timeLeft - delta);
+            if (updatedTime <= 0) {
+              handleWrongRef.current(true);
+              return { ...prev, timeLeft: 0 };
+            }
+            return { ...prev, timeLeft: updatedTime };
+          });
+        }, 33);
+      }, [stopTimer]);
+
+      const resetInputs = () => {
+        setInputR(''); setInputOperator('+'); setInputAlpha(''); setActiveField('r');
+      };
+
+      const checkHighScore = useCallback((finalScore) => {
+        setHighScore(prev => {
+          if (finalScore > prev) {
+            localStorage.setItem('trig_synth_high_score', finalScore.toString());
+            setIsNewRecord(true);
+            return finalScore;
+          }
+          return prev;
+        });
+      }, []);
+
+      const nextLevel = useCallback(() => {
+        setCurrentProblem(generateProblem());
+        resetInputs();
+        setFeedback('none');
+        stopTimer();
+        setGameState(prev => ({ ...prev, timeLeft: MAX_TIME }));
+        startTimer();
+      }, [startTimer, stopTimer]);
+
+      const startGame = useCallback(() => {
+        setGameState({
+          phase: GamePhase.PLAYING, currentStage: 1, hp: MAX_HP,
+          score: 0, timeLeft: MAX_TIME, totalMistakes: 0, mistakeHistory: [], combo: 0
+        });
+        setIsNewRecord(false); setMonsterState('idle'); setFeedback('none');
+        nextLevel();
+      }, [nextLevel]);
+
+      const goToTitle = useCallback(() => {
+        setGameState({
+          phase: GamePhase.START, currentStage: 1, hp: MAX_HP,
+          score: 0, timeLeft: MAX_TIME, totalMistakes: 0, mistakeHistory: [], combo: 0
+        });
+        setMonsterState('idle'); setFeedback('none'); stopTimer();
+      }, [stopTimer]);
+
+      useEffect(() => { return stopTimer; }, [stopTimer]);
+
+      useEffect(() => {
+        if (gameState.hp <= 0 && gameState.phase === GamePhase.PLAYING) {
+          stopTimer();
+          setGameState(prev => ({ ...prev, phase: GamePhase.GAME_OVER }));
+        }
+      }, [gameState.hp, gameState.phase, stopTimer]);
+
+      const handleCorrect = () => {
+        stopTimer();
+        setFeedback('correct'); setMonsterState('hit');
+        setGameState(prev => {
+          const newCombo = prev.combo + 1;
+          const basePoints = 100;
+          const timeBonus = Math.floor(prev.timeLeft * 50);
+          let comboBonus = 0;
+          if (newCombo === 2) comboBonus = 500;
+          else if (newCombo >= 3) comboBonus = 1000;
+          const points = basePoints + timeBonus + comboBonus;
+          const newScore = prev.score + points;
+          setTimeout(() => {
+            if (prev.currentStage >= TOTAL_STAGES) {
+              checkHighScore(newScore);
+              setGameState(p => ({ ...p, phase: GamePhase.VICTORY }));
+            } else {
+              setMonsterState('idle');
+              setGameState(p => ({ ...p, currentStage: p.currentStage + 1 }));
+              nextLevel();
+            }
+          }, 1500); 
+          return { ...prev, score: newScore, combo: newCombo };
+        });
+      };
+
+      const handleWrong = useCallback((isTimeout) => {
+        stopTimer();
+        setFeedback(isTimeout ? 'timeout' : 'wrong');
+        setMonsterState('attack'); setScreenShake(true);
+        if (currentProblem) {
+           setGameState(prev => ({
+             ...prev, totalMistakes: prev.totalMistakes + 1, combo: 0,
+             mistakeHistory: [
+               ...prev.mistakeHistory, 
+               { problem: currentProblem, userR: inputR || '?', userOperator: inputOperator, userAlpha: inputAlpha || '?', reason: isTimeout ? 'timeout' : 'wrong' }
+             ]
+           }));
+        }
+        setTimeout(() => {
+          setScreenShake(false); setMonsterState('idle'); setFeedback('none');
+          setGameState(prev => {
+            const newHp = prev.hp - 1;
+            if (newHp <= 0) {
+               stopTimer(); checkHighScore(prev.score);
+               return { ...prev, hp: 0, phase: GamePhase.GAME_OVER };
+            }
+            setTimeout(() => startTimer(), 0);
+            return { ...prev, hp: newHp, timeLeft: MAX_TIME };
+          });
+        }, 1000);
+      }, [currentProblem, inputR, inputOperator, inputAlpha, checkHighScore, startTimer, stopTimer]);
+
+      useEffect(() => { handleWrongRef.current = handleWrong; }, [handleWrong]);
+
+      const checkAnswer = () => {
+        if (!currentProblem || gameState.phase !== GamePhase.PLAYING || feedback !== 'none') return;
+        if (evaluateInput(inputR, inputOperator, inputAlpha, currentProblem)) {
+          handleCorrect();
+        } else {
+          handleWrong(false);
+        }
+      };
+
+      const handleKeyPress = (val) => {
+        if (gameState.phase !== GamePhase.PLAYING) return;
+        if (activeField === 'r') setInputR(prev => prev + val);
+        else if (activeField === 'alpha') setInputAlpha(val);
+      };
+
+      const handleDelete = () => {
+        if (gameState.phase !== GamePhase.PLAYING) return;
+        if (activeField === 'r') setInputR(prev => prev.slice(0, -1));
+        else if (activeField === 'alpha') setInputAlpha('');
+      };
+      
+      const toggleOperator = () => {
+        if (gameState.phase !== GamePhase.PLAYING) return;
+        setInputOperator(prev => prev === '+' ? '-' : '+');
+      };
+
+      if (gameState.phase === GamePhase.START) {
+        return (
+          <div className="fixed inset-0 h-[100dvh] bg-black text-white flex flex-col items-center justify-center p-4 relative scanlines overflow-hidden">
+            <h1 className="text-3xl md:text-6xl text-center text-cyan-400 mb-6 neon-blue font-bold tracking-tighter leading-normal">
+              TRIG<br/>SYNTH<br/>WARRIOR
+            </h1>
+            <div className="bg-gray-900 border-2 border-cyan-600 p-4 md:p-6 rounded-lg max-w-md w-full text-center shadow-[0_0_20px_rgba(0,188,212,0.4)] relative">
+              {highScore > 0 && (
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-black border border-cyan-600 text-yellow-400 text-xs px-3 py-1 rounded-full flex items-center gap-1 shadow-[0_0_10px_cyan] font-bold">
+                  <Trophy size={14} className="text-yellow-400" />
+                  HI-SCORE: {highScore}
+                </div>
+              )}
+              <p className="mb-4 text-xs md:text-sm text-cyan-200 mt-2">
+                <span className="text-yellow-400">sin</span> と <span className="text-yellow-400">cos</span> を合成してバグモンスターを撃破せよ
+              </p>
+              <div className="text-[10px] md:text-xs text-left mb-6 space-y-2 bg-black p-3 rounded border border-gray-700">
+                <div className="flex items-center gap-1">
+                  <span>1.</span><MathLabel latex="a \sin \theta + b \cos \theta" className="inline-block" /><span>を変形せよ</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span>2. 目標形式:</span><MathLabel latex="r \sin(\theta \pm \alpha)" className="inline-block" />
+                </div>
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span>3.</span><MathLabel latex="r" className="inline-block" /><span>と</span><MathLabel latex="\alpha" className="inline-block" /><span>を入力 (<span className="text-yellow-400">ボタン選択</span>)</span>
+                </div>
+              </div>
+              <button onClick={startGame} className="w-full bg-cyan-700 hover:bg-cyan-600 text-white font-bold py-3 px-4 rounded border-b-4 border-cyan-900 transition-all flex items-center justify-center gap-2">
+                <Play size={20} /> ミッション開始
+              </button>
+            </div>
+            <div className="absolute bottom-4 text-[10px] text-gray-600">v1.6.0 | SYSTEM READY</div>
+          </div>
+        );
+      }
+
+      if (gameState.phase === GamePhase.VICTORY || gameState.phase === GamePhase.GAME_OVER) {
+        const isVictory = gameState.phase === GamePhase.VICTORY;
+        const isPerfect = isVictory && gameState.totalMistakes === 0;
+        let bgImage = isVictory ? (isPerfect ? ASSETS.WIN_PERFECT : ASSETS.WIN_MISS) : ASSETS.DEFEAT;
+        return (
+          <div className="fixed inset-0 h-[100dvh] bg-black flex flex-col items-center p-4 relative scanlines overflow-y-auto">
+            {isPerfect && (
+                <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+                    <div className="absolute inset-0 bg-gradient-to-t from-yellow-900/30 to-transparent animate-pulse" />
+                    {[...Array(40)].map((_, i) => (
+                        <div key={i} className="confetti" style={{ left: `${Math.random() * 100}%`, animationDelay: `${Math.random() * 4}s`, animationDuration: `${2 + Math.random() * 3}s`, backgroundColor: ['#ffd700', '#ff00ff', '#00ffff', '#ffffff'][Math.floor(Math.random() * 4)] }} />
+                    ))}
+                </div>
+            )}
+            <div className="w-full max-w-2xl flex flex-col items-center z-10 py-4">
+              <h1 className={cn("text-2xl md:text-5xl mb-2 text-center font-black tracking-widest", isVictory ? (isPerfect ? 'text-yellow-400 drop-shadow-[0_0_15px_rgba(255,215,0,0.8)] animate-pulse' : 'text-green-400 neon-blue') : 'text-red-500 neon-red')}>
+                {isVictory ? (isPerfect ? "PERFECT SYNC!!" : "MISSION CLEAR") : "SYSTEM FAILURE"}
+              </h1>
+              {isPerfect && (
+                  <div className="flex items-center gap-2 mb-4 text-cyan-200 text-sm md:text-lg animate-bounce font-bold tracking-widest border-y-2 border-cyan-500 py-1 px-6 bg-black/70 shadow-[0_0_10px_cyan]">
+                      <Trophy className="text-yellow-400" size={20} /><span>S-RANK: GODLIKE</span><Star className="text-yellow-400" size={20} fill="currentColor" />
+                  </div>
+              )}
+              {isNewRecord && (
+                  <div className="flex items-center gap-2 mb-4 text-yellow-200 text-sm md:text-lg animate-bounce font-bold tracking-widest border-y-2 border-yellow-500 py-1 px-6 bg-yellow-900/40 shadow-[0_0_20px_yellow] relative overflow-hidden">
+                      <div className="absolute inset-0 bg-white/20 animate-pulse mix-blend-overlay"></div>
+                      <Trophy className="text-yellow-400" size={20} /><span>NEW RECORD!</span><Trophy className="text-yellow-400" size={20} />
+                  </div>
+              )}
+              <div className={cn("relative w-48 h-48 md:w-64 md:h-64 mb-6 border-4 rounded-lg bg-gray-900 overflow-hidden shadow-2xl shrink-0", isPerfect ? 'border-yellow-500 shadow-[0_0_30px_rgba(255,215,0,0.5)]' : 'border-gray-800')}>
+                <img src={bgImage} alt="Result" className="w-full h-full object-cover" />
+              </div>
+              <div className="bg-gray-900 border border-gray-700 p-4 md:p-6 rounded w-full mb-6 shrink-0">
+                <div className="flex justify-between mb-2">
+                  <span className="text-gray-400">FINAL SCORE</span><span className={cn("text-lg md:text-2xl font-bold", isPerfect ? 'text-yellow-400' : 'text-white')}>{gameState.score}</span>
+                </div>
+                <div className="flex justify-between mb-2">
+                  <span className="text-gray-400">MISTAKES</span><span className={cn("text-lg md:text-2xl", gameState.totalMistakes === 0 ? 'text-green-400' : 'text-red-400')}>{gameState.totalMistakes}</span>
+                </div>
+              </div>
+              {gameState.mistakeHistory.length > 0 && (
+                 <div className="w-full bg-red-900/20 border border-red-800 p-4 rounded mb-6 shrink-0">
+                    <h3 className="text-red-400 mb-4 flex items-center gap-2"><Frown size={20}/> REVIEW ERRORS</h3>
+                    <div className="space-y-4 max-h-48 overflow-y-auto pr-2">
+                      {gameState.mistakeHistory.map((m, idx) => (
+                          <div key={idx + m.problem.id} className="bg-black/50 p-3 rounded border border-red-900/50 relative">
+                            {m.reason === 'timeout' && (
+                              <div className="absolute top-2 right-2 bg-red-600 text-white text-[10px] px-2 py-0.5 rounded font-bold flex items-center gap-1 animate-pulse"><Clock size={10} /> TIME UP</div>
+                            )}
+                            <div className="mb-2 text-xs text-gray-500">Problem:</div><MathLabel latex={m.problem.latex} className="text-white mb-2" />
+                            <div className="flex flex-col gap-1 mt-2">
+                               <div className="text-xs text-red-400">You: <MathLabel latex={`r=${m.userR}, \\sin(\\theta ${m.userOperator} ${m.userAlpha})`} className="inline"/></div>
+                               <div className="text-xs text-green-400">Correct: <MathLabel latex={`r=${m.problem.correctR}, \\alpha=${m.problem.correctAlpha}`} className="inline"/></div>
+                            </div>
+                          </div>
+                      ))}
+                    </div>
+                 </div>
+              )}
+              <button onClick={goToTitle} className={cn("py-3 px-8 rounded border-2 font-bold flex items-center gap-2 mb-8 shrink-0 transition-all active:scale-95", isPerfect ? 'bg-yellow-900/50 border-yellow-400 text-yellow-100 hover:bg-yellow-800' : 'bg-gray-800 hover:bg-gray-700 border-cyan-500 text-white')}>
+                <Home size={20} /> RETURN TO TITLE
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className={cn("fixed inset-0 h-[100dvh] w-full bg-gray-900 flex flex-col scanlines overflow-hidden", screenShake && 'animate-[screen-shake_0.5s_cubic-bezier(.36,.07,.19,.97)_both]')}>
+          <div className="h-10 bg-black border-b border-gray-800 flex justify-between items-center px-2 md:px-4 z-20 shrink-0">
+            <div className="flex space-x-1">
+              {[...Array(MAX_HP)].map((_, i) => <Heart key={i} className={cn("w-6 h-6", i < gameState.hp ? 'fill-red-500 text-red-500 neon-red' : 'text-gray-800')} />)}
+            </div>
+            <div className="flex flex-col items-center w-16">
+                <div className="text-[8px] text-cyan-600">TIME</div>
+                <div className={cn("text-base font-bold leading-none tabular-nums", gameState.timeLeft < 10 ? 'text-red-500 animate-[pulse_0.5s_ease-in-out_infinite]' : 'text-cyan-400')}>{gameState.timeLeft.toFixed(2)}</div>
+            </div>
+            <div className="flex flex-col items-end w-20">
+                <div className="text-[8px] text-yellow-600 truncate min-w-full text-right h-[12px]">
+                  {gameState.combo > 1 ? <span className="text-orange-400 font-bold animate-pulse">{gameState.combo} COMBO!</span> : "SCORE"}
+                </div>
+                <div className={cn("text-base leading-none", gameState.combo > 1 ? "text-orange-400 font-bold" : "text-yellow-400")}>{gameState.score.toString().padStart(5, '0')}</div>
+            </div>
+          </div>
+
+          <div className="flex-1 flex flex-col relative w-full max-w-3xl mx-auto overflow-hidden">
+            <div className="relative flex-1 min-h-0 flex items-center justify-center bg-gradient-to-b from-gray-900 to-black overflow-hidden p-1">
+              <div className="absolute top-2 left-2 text-[10px] text-gray-600 bg-black/50 px-2 py-0.5 rounded border border-gray-800 z-10">STAGE {gameState.currentStage}/{TOTAL_STAGES}</div>
+              <MonsterDisplay state={monsterState} className="w-full h-full" />
+              {feedback === 'correct' && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center z-30 pointer-events-none">
+                   <div className="text-3xl md:text-5xl text-yellow-300 font-bold animate-ping" style={{textShadow: '0 0 20px yellow'}}>CRITICAL!</div>
+                   {gameState.combo > 1 && <div className="text-xl md:text-3xl text-orange-400 font-bold mt-2 neon-red animate-bounce" style={{textShadow: '0 0 10px orange'}}>{gameState.combo} COMBO!</div>}
+                </div>
+              )}
+              {(feedback === 'wrong' || feedback === 'timeout') && (
+                <div className="absolute inset-0 bg-red-500/20 z-30 pointer-events-none animate-pulse">
+                    {feedback === 'timeout' && <div className="absolute inset-0 flex items-center justify-center"><div className="text-3xl md:text-4xl text-red-500 font-bold bg-black/80 px-4 py-2 rounded border-2 border-red-500 neon-red">TIME UP</div></div>}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-black border-t-2 border-cyan-900 p-1 pb-safe z-20 shrink-0">
+              <div className="text-center py-1 mb-1 bg-gray-900 rounded border border-gray-700 shadow-inner min-h-[44px] flex items-center justify-center">
+                 {currentProblem && <MathLabel latex={currentProblem.latex} className="text-sm md:text-lg text-white neon-blue" displayMode={true} />}
+              </div>
+              <div className="flex items-center justify-center gap-1 md:gap-2 mb-1">
+                 <div className="flex items-center gap-0.5">
+                     <div className="text-gray-400 text-xs md:text-sm"><MathLabel latex="r=" /></div>
+                     <div onClick={() => setActiveField('r')} className={cn("h-9 w-14 md:w-16 bg-gray-800 border-2 rounded flex items-center justify-center text-base md:text-lg cursor-pointer transition-colors", activeField === 'r' ? 'border-cyan-400 text-white shadow-[0_0_10px_cyan]' : 'border-gray-600 text-gray-400')}>
+                        {inputR === '' ? <span className="animate-pulse text-gray-600">_</span> : <MathLabel latex={inputR} />}
+                     </div>
+                 </div>
+                 <div className="flex items-center gap-0.5 bg-gray-900/50 p-0.5 rounded border border-gray-800">
+                     <div className="text-gray-400 text-xs md:text-sm"><MathLabel latex="\sin(\theta" /></div>
+                     <button onClick={toggleOperator} className="h-7 w-8 md:w-10 bg-gray-800 border-2 rounded flex items-center justify-center text-sm md:text-base cursor-pointer transition-colors mx-0.5 border-green-400 text-white shadow-[0_0_5px_lime] active:scale-95">
+                        {inputOperator === '+' ? <Plus size={16}/> : <Minus size={16}/>}
+                     </button>
+                     <div onClick={() => setActiveField('alpha')} className={cn("h-9 w-14 md:w-16 bg-gray-800 border-2 rounded flex items-center justify-center text-base md:text-lg cursor-pointer transition-colors", activeField === 'alpha' ? 'border-purple-400 text-white shadow-[0_0_10px_purple]' : 'border-gray-600 text-gray-400')}>
+                        {inputAlpha === '' ? <span className="animate-pulse text-gray-600">?</span> : <MathLabel latex={inputAlpha} />}
+                     </div>
+                     <div className="text-gray-400 text-xs md:text-sm">)</div>
+                 </div>
+              </div>
+              <Keypad mode={activeField} onPress={handleKeyPress} onDelete={handleDelete} onSubmit={checkAnswer} />
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    const root = createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
