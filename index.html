@@ -88,569 +88,558 @@
     {
       "imports": {
         "react": "https://esm.sh/react@18.2.0",
+        "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
         "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-        "lucide-react": "https://esm.sh/lucide-react@0.300.0",
-        "katex": "https://esm.sh/katex@0.16.9"
+        "lucide-react": "https://esm.sh/lucide-react@0.300.0?bundle",
+        "katex": "https://esm.sh/katex@0.16.9?bundle"
       }
     }
   </script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
   <div id="root"></div>
   
-  <script type="text/babel" data-type="module">
-    import { createRoot } from 'react-dom/client';
-    const cn = (...args) => args.filter(Boolean).join(' ');
+  <script type="module">
+// src/AppTemp.tsx
+import { useState, useEffect, useRef, useCallback, memo } from "react";
+import { Heart, Frown, Clock, Plus, Minus, Play, Trophy, Star, Delete, CornerDownLeft, Home } from "lucide-react";
+import katex from "katex";
 
-    import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
-    import { Heart, RefreshCw, Frown, Clock, Plus, Minus, Play, Trophy, Star, Delete, CornerDownLeft, Home } from 'lucide-react';
-    import katex from 'katex';
-    
-    const MathLabel = memo(function MathLabel({ latex, className = "", displayMode = false }: { latex: string, className?: string, displayMode?: boolean }) {
-        const html = katex.renderToString(latex, { displayMode, throwOnError: false });
-        return <div className={className} dangerouslySetInnerHTML={{ __html: html }} />;
-    });
-    
-    const GamePhase = {
-      START: 'START',
-      PLAYING: 'PLAYING',
-      VICTORY: 'VICTORY',
-      GAME_OVER: 'GAME_OVER',
-    } as const;
-    type GamePhaseType = typeof GamePhase[keyof typeof GamePhase];
-    
-    const ASSETS = {
-      NORMAL: "https://cdn.jsdelivr.net/gh/kinoshitatomofumi62/my-assets@main/aae0.png",
-      ATTACK: "https://cdn.jsdelivr.net/gh/kinoshitatomofumi62/my-assets@main/aae2.png",
-      HIT: "https://cdn.jsdelivr.net/gh/kinoshitatomofumi62/my-assets@main/aae1.png",
-      DEFEAT: "https://cdn.jsdelivr.net/gh/kinoshitatomofumi62/my-assets@main/aae3.png",
-      WIN_MISS: "https://cdn.jsdelivr.net/gh/kinoshitatomofumi62/my-assets@main/aae4.png",
-      WIN_PERFECT: "https://cdn.jsdelivr.net/gh/kinoshitatomofumi62/my-assets@main/aae5.png",
-    };
-    
-    const BASE_TEMPLATES = [
-      { a: 1, aLatex: "", b: 1, bLatex: "", rBase: Math.SQRT2, alphaLabel: "\\frac{\\pi}{4}", alphaSign: 1 },
-      { a: 1, aLatex: "", b: -1, bLatex: "-", rBase: Math.SQRT2, alphaLabel: "\\frac{\\pi}{4}", alphaSign: -1 },
-      { a: -1, aLatex: "-", b: 1, bLatex: "", rBase: Math.SQRT2, alphaLabel: "\\frac{3\\pi}{4}", alphaSign: 1 },
-      { a: -1, aLatex: "-", b: -1, bLatex: "-", rBase: Math.SQRT2, alphaLabel: "\\frac{3\\pi}{4}", alphaSign: -1 },
-      { a: Math.sqrt(3), aLatex: "\\sqrt{3}", b: 1, bLatex: "", rBase: 2, alphaLabel: "\\frac{\\pi}{6}", alphaSign: 1 },
-      { a: 1, aLatex: "", b: Math.sqrt(3), bLatex: "\\sqrt{3}", rBase: 2, alphaLabel: "\\frac{\\pi}{3}", alphaSign: 1 },
-      { a: Math.sqrt(3), aLatex: "\\sqrt{3}", b: -1, bLatex: "-", rBase: 2, alphaLabel: "\\frac{\\pi}{6}", alphaSign: -1 },
-      { a: 1, aLatex: "", b: -Math.sqrt(3), bLatex: "-\\sqrt{3}", rBase: 2, alphaLabel: "\\frac{\\pi}{3}", alphaSign: -1 },
-      { a: -Math.sqrt(3), aLatex: "-\\sqrt{3}", b: 1, bLatex: "", rBase: 2, alphaLabel: "\\frac{5\\pi}{6}", alphaSign: 1 },
-      { a: -1, aLatex: "-", b: Math.sqrt(3), bLatex: "\\sqrt{3}", rBase: 2, alphaLabel: "\\frac{2\\pi}{3}", alphaSign: 1 },
-      { a: -Math.sqrt(3), aLatex: "-\\sqrt{3}", b: -1, bLatex: "-", rBase: 2, alphaLabel: "\\frac{5\\pi}{6}", alphaSign: -1 },
-      { a: -1, aLatex: "-", b: -Math.sqrt(3), bLatex: "-\\sqrt{3}", rBase: 2, alphaLabel: "\\frac{2\\pi}{3}", alphaSign: -1 },
-    ];
-    
-    const ALPHA_CHOICES = [
-      { label: "\\frac{\\pi}{6}", value: Math.PI / 6 },
-      { label: "\\frac{\\pi}{4}", value: Math.PI / 4 },
-      { label: "\\frac{\\pi}{3}", value: Math.PI / 3 },
-      { label: "\\frac{2\\pi}{3}", value: (2 * Math.PI) / 3 },
-      { label: "\\frac{3\\pi}{4}", value: (3 * Math.PI) / 4 },
-      { label: "\\frac{5\\pi}{6}", value: (5 * Math.PI) / 6 },
-    ];
-    
-    const generateProblem = () => {
-      const template = BASE_TEMPLATES[Math.floor(Math.random() * BASE_TEMPLATES.length)];
-      const scale = Math.floor(Math.random() * 3) + 1;
-    
-      const formatTerm = (baseLatex: string, isFirst: boolean, val: number) => {
-          let s = "";
-          const isNeg = val < 0;
-          if (isFirst) {
-              if (isNeg) s += "-";
-          } else {
-              s += isNeg ? " - " : " + ";
-          }
-          if (baseLatex === "" || baseLatex === "-" || baseLatex === "-\\sqrt{3}" || baseLatex === "\\sqrt{3}") {
-              if (baseLatex.includes("sqrt")) {
-                 if (scale > 1) s += scale.toString();
-                 s += "\\sqrt{3}";
-              } else {
-                 if (scale > 1) s += scale.toString();
-              }
-          }
-          return s;
-      };
-    
-      let latexA = formatTerm(template.aLatex, true, template.a);
-      let latexB = formatTerm(template.bLatex, false, template.b);
-      let problemLatex = `${latexA}\\sin\\theta${latexB}\\cos\\theta`;
-      let correctR = "";
-      if (Math.abs(template.rBase - 2) < 0.01) {
-          correctR = (2 * scale).toString();
+// src/lib/utils.ts
+function cn(...classes) {
+  return classes.filter(Boolean).join(" ");
+}
+
+// src/AppTemp.tsx
+import { jsx, jsxs } from "react/jsx-runtime";
+var MathLabel = memo(function MathLabel2({ latex, className = "", displayMode = false }) {
+  const html = katex.renderToString(latex, { displayMode, throwOnError: false });
+  return /* @__PURE__ */ jsx("div", { className, dangerouslySetInnerHTML: { __html: html } });
+});
+var GamePhase = {
+  START: "START",
+  PLAYING: "PLAYING",
+  VICTORY: "VICTORY",
+  GAME_OVER: "GAME_OVER"
+};
+var ASSETS = {
+  NORMAL: "https://cdn.jsdelivr.net/gh/kinoshitatomofumi62/my-assets@main/aae0.png",
+  ATTACK: "https://cdn.jsdelivr.net/gh/kinoshitatomofumi62/my-assets@main/aae2.png",
+  HIT: "https://cdn.jsdelivr.net/gh/kinoshitatomofumi62/my-assets@main/aae1.png",
+  DEFEAT: "https://cdn.jsdelivr.net/gh/kinoshitatomofumi62/my-assets@main/aae3.png",
+  WIN_MISS: "https://cdn.jsdelivr.net/gh/kinoshitatomofumi62/my-assets@main/aae4.png",
+  WIN_PERFECT: "https://cdn.jsdelivr.net/gh/kinoshitatomofumi62/my-assets@main/aae5.png"
+};
+var BASE_TEMPLATES = [
+  { a: 1, aLatex: "", b: 1, bLatex: "", rBase: Math.SQRT2, alphaLabel: "\\frac{\\pi}{4}", alphaSign: 1 },
+  { a: 1, aLatex: "", b: -1, bLatex: "-", rBase: Math.SQRT2, alphaLabel: "\\frac{\\pi}{4}", alphaSign: -1 },
+  { a: -1, aLatex: "-", b: 1, bLatex: "", rBase: Math.SQRT2, alphaLabel: "\\frac{3\\pi}{4}", alphaSign: 1 },
+  { a: -1, aLatex: "-", b: -1, bLatex: "-", rBase: Math.SQRT2, alphaLabel: "\\frac{3\\pi}{4}", alphaSign: -1 },
+  { a: Math.sqrt(3), aLatex: "\\sqrt{3}", b: 1, bLatex: "", rBase: 2, alphaLabel: "\\frac{\\pi}{6}", alphaSign: 1 },
+  { a: 1, aLatex: "", b: Math.sqrt(3), bLatex: "\\sqrt{3}", rBase: 2, alphaLabel: "\\frac{\\pi}{3}", alphaSign: 1 },
+  { a: Math.sqrt(3), aLatex: "\\sqrt{3}", b: -1, bLatex: "-", rBase: 2, alphaLabel: "\\frac{\\pi}{6}", alphaSign: -1 },
+  { a: 1, aLatex: "", b: -Math.sqrt(3), bLatex: "-\\sqrt{3}", rBase: 2, alphaLabel: "\\frac{\\pi}{3}", alphaSign: -1 },
+  { a: -Math.sqrt(3), aLatex: "-\\sqrt{3}", b: 1, bLatex: "", rBase: 2, alphaLabel: "\\frac{5\\pi}{6}", alphaSign: 1 },
+  { a: -1, aLatex: "-", b: Math.sqrt(3), bLatex: "\\sqrt{3}", rBase: 2, alphaLabel: "\\frac{2\\pi}{3}", alphaSign: 1 },
+  { a: -Math.sqrt(3), aLatex: "-\\sqrt{3}", b: -1, bLatex: "-", rBase: 2, alphaLabel: "\\frac{5\\pi}{6}", alphaSign: -1 },
+  { a: -1, aLatex: "-", b: -Math.sqrt(3), bLatex: "-\\sqrt{3}", rBase: 2, alphaLabel: "\\frac{2\\pi}{3}", alphaSign: -1 }
+];
+var ALPHA_CHOICES = [
+  { label: "\\frac{\\pi}{6}", value: Math.PI / 6 },
+  { label: "\\frac{\\pi}{4}", value: Math.PI / 4 },
+  { label: "\\frac{\\pi}{3}", value: Math.PI / 3 },
+  { label: "\\frac{2\\pi}{3}", value: 2 * Math.PI / 3 },
+  { label: "\\frac{3\\pi}{4}", value: 3 * Math.PI / 4 },
+  { label: "\\frac{5\\pi}{6}", value: 5 * Math.PI / 6 }
+];
+var generateProblem = () => {
+  const template = BASE_TEMPLATES[Math.floor(Math.random() * BASE_TEMPLATES.length)];
+  const scale = Math.floor(Math.random() * 3) + 1;
+  const formatTerm = (baseLatex, isFirst, val) => {
+    let s = "";
+    const isNeg = val < 0;
+    if (isFirst) {
+      if (isNeg) s += "-";
+    } else {
+      s += isNeg ? " - " : " + ";
+    }
+    if (baseLatex === "" || baseLatex === "-" || baseLatex === "-\\sqrt{3}" || baseLatex === "\\sqrt{3}") {
+      if (baseLatex.includes("sqrt")) {
+        if (scale > 1) s += scale.toString();
+        s += "\\sqrt{3}";
       } else {
-          correctR = (scale === 1 ? "" : scale.toString()) + "\\sqrt{2}";
+        if (scale > 1) s += scale.toString();
       }
-      const op = template.alphaSign === 1 ? "+" : "-";
-      const correctAlpha = op + template.alphaLabel;
-    
-      return {
-        id: Math.random().toString(36).substring(7),
-        a: template.a * scale,
-        b: template.b * scale,
-        latex: problemLatex,
-        correctR,
-        correctAlpha
-      };
-    };
-    
-    const evaluateInput = (inputR: string, inputOperator: string, inputAlpha: string, problem: any) => {
-      let r = inputR.replace(/\s/g, ''); 
-      if (r.startsWith("1\\sqrt")) r = r.substring(1);
-      if (!inputAlpha) return false;
-      const alphaCombined = inputOperator + inputAlpha;
-      return r === problem.correctR && alphaCombined === problem.correctAlpha;
-    };
-    
-    const MonsterDisplay = memo(function MonsterDisplay({ state, className }: { state: string, className?: string }) {
-      let src = ASSETS.NORMAL;
-      if (state === 'hit') src = ASSETS.HIT;
-      if (state === 'attack') src = ASSETS.ATTACK;
-      let animClass = "";
-      if (state === 'idle') animClass = "animate-float";
-      if (state === 'attack') animClass = "animate-lunge";
-      if (state === 'hit') animClass = "animate-shake brightness-150";
-      if (state === 'dead') animClass = "opacity-50 grayscale";
-      return (
-        <div className={cn('relative flex justify-center items-center', className)}>
-          <img src={src} alt="Monster" className={cn("w-full h-full object-contain drop-shadow-[0_0_15px_rgba(0,188,212,0.4)] transition-all duration-200", animClass)} />
-        </div>
-      );
+    }
+    return s;
+  };
+  let latexA = formatTerm(template.aLatex, true, template.a);
+  let latexB = formatTerm(template.bLatex, false, template.b);
+  let problemLatex = `${latexA}\\sin\\theta${latexB}\\cos\\theta`;
+  let correctR = "";
+  if (Math.abs(template.rBase - 2) < 0.01) {
+    correctR = (2 * scale).toString();
+  } else {
+    correctR = (scale === 1 ? "" : scale.toString()) + "\\sqrt{2}";
+  }
+  const op = template.alphaSign === 1 ? "+" : "-";
+  const correctAlpha = op + template.alphaLabel;
+  return {
+    id: Math.random().toString(36).substring(7),
+    a: template.a * scale,
+    b: template.b * scale,
+    latex: problemLatex,
+    correctR,
+    correctAlpha
+  };
+};
+var evaluateInput = (inputR, inputOperator, inputAlpha, problem) => {
+  let r = inputR.replace(/\s/g, "");
+  if (r.startsWith("1\\sqrt")) r = r.substring(1);
+  if (!inputAlpha) return false;
+  const alphaCombined = inputOperator + inputAlpha;
+  return r === problem.correctR && alphaCombined === problem.correctAlpha;
+};
+var MonsterDisplay = memo(function MonsterDisplay2({ state, className }) {
+  let src = ASSETS.NORMAL;
+  if (state === "hit") src = ASSETS.HIT;
+  if (state === "attack") src = ASSETS.ATTACK;
+  let animClass = "";
+  if (state === "idle") animClass = "animate-float";
+  if (state === "attack") animClass = "animate-lunge";
+  if (state === "hit") animClass = "animate-shake brightness-150";
+  if (state === "dead") animClass = "opacity-50 grayscale";
+  return /* @__PURE__ */ jsx("div", { className: cn("relative flex justify-center items-center", className), children: /* @__PURE__ */ jsx("img", { src, alt: "Monster", className: cn("w-full h-full object-contain drop-shadow-[0_0_15px_rgba(0,188,212,0.4)] transition-all duration-200", animClass) }) });
+});
+function Keypad({ mode, onPress, onDelete, onSubmit }) {
+  const btnClass = "bg-gray-800 border-2 border-cyan-700 text-cyan-400 font-bold p-0.5 active:bg-cyan-900 active:border-cyan-400 rounded shadow-[0_0_5px_rgba(0,188,212,0.2)] transition-colors flex items-center justify-center select-none cursor-pointer";
+  const numBtnClass = `${btnClass} text-lg h-10`;
+  const alphaBtnClass = `${btnClass} h-11`;
+  if (mode === "r") {
+    return /* @__PURE__ */ jsxs("div", { className: "grid grid-cols-4 gap-1 p-0.5 max-w-sm mx-auto w-full", children: [
+      /* @__PURE__ */ jsx("button", { className: numBtnClass, onClick: () => onPress("7"), children: "7" }),
+      /* @__PURE__ */ jsx("button", { className: numBtnClass, onClick: () => onPress("8"), children: "8" }),
+      /* @__PURE__ */ jsx("button", { className: numBtnClass, onClick: () => onPress("9"), children: "9" }),
+      /* @__PURE__ */ jsx("button", { className: `${numBtnClass} text-red-400 border-red-600`, onClick: onDelete, children: /* @__PURE__ */ jsx(Delete, { size: 18 }) }),
+      /* @__PURE__ */ jsx("button", { className: numBtnClass, onClick: () => onPress("4"), children: "4" }),
+      /* @__PURE__ */ jsx("button", { className: numBtnClass, onClick: () => onPress("5"), children: "5" }),
+      /* @__PURE__ */ jsx("button", { className: numBtnClass, onClick: () => onPress("6"), children: "6" }),
+      /* @__PURE__ */ jsx("button", { className: `${numBtnClass} bg-cyan-900 text-white border-cyan-400`, onClick: onSubmit, children: /* @__PURE__ */ jsx(CornerDownLeft, { size: 18 }) }),
+      /* @__PURE__ */ jsx("button", { className: numBtnClass, onClick: () => onPress("1"), children: "1" }),
+      /* @__PURE__ */ jsx("button", { className: numBtnClass, onClick: () => onPress("2"), children: "2" }),
+      /* @__PURE__ */ jsx("button", { className: numBtnClass, onClick: () => onPress("3"), children: "3" }),
+      /* @__PURE__ */ jsx("button", { className: `${numBtnClass} text-yellow-400 border-yellow-600 text-sm`, onClick: () => onPress("\\sqrt{2}"), children: "\u221A2" }),
+      /* @__PURE__ */ jsx("button", { className: `${numBtnClass} text-yellow-400 border-yellow-600 text-sm`, onClick: () => onPress("\\sqrt{3}"), children: "\u221A3" }),
+      /* @__PURE__ */ jsx("div", { className: "col-span-3 grid grid-cols-3 gap-1", children: /* @__PURE__ */ jsx("button", { className: `${numBtnClass} col-start-2`, onClick: () => onPress("0"), children: "0" }) })
+    ] });
+  }
+  return /* @__PURE__ */ jsxs("div", { className: "grid grid-cols-3 gap-1.5 p-0.5 max-w-sm mx-auto w-full", children: [
+    ALPHA_CHOICES.map((choice) => /* @__PURE__ */ jsx("button", { className: alphaBtnClass, onClick: () => onPress(choice.label), children: /* @__PURE__ */ jsx(MathLabel, { latex: choice.label, className: "pointer-events-none scale-75 origin-center" }) }, choice.label)),
+    /* @__PURE__ */ jsx("button", { className: `${alphaBtnClass} text-red-400 border-red-600`, onClick: onDelete, children: /* @__PURE__ */ jsx(Delete, { size: 18 }) }),
+    /* @__PURE__ */ jsx("div", { className: "flex items-center justify-center text-gray-600 text-[10px]", children: "SELECT" }),
+    /* @__PURE__ */ jsx("button", { className: `${alphaBtnClass} bg-cyan-900 text-white border-cyan-400`, onClick: onSubmit, children: /* @__PURE__ */ jsx(CornerDownLeft, { size: 18 }) })
+  ] });
+}
+var MAX_HP = 3;
+var MAX_TIME = 30;
+var TOTAL_STAGES = 5;
+function App() {
+  useEffect(() => {
+    Object.values(ASSETS).forEach((src) => {
+      const img = new Image();
+      img.src = src;
     });
-    
-    function Keypad({ mode, onPress, onDelete, onSubmit }: { mode: string, onPress: (v: string) => void, onDelete: () => void, onSubmit: () => void }) {
-      const btnClass = "bg-gray-800 border-2 border-cyan-700 text-cyan-400 font-bold p-0.5 active:bg-cyan-900 active:border-cyan-400 rounded shadow-[0_0_5px_rgba(0,188,212,0.2)] transition-colors flex items-center justify-center select-none cursor-pointer";
-      const numBtnClass = `${btnClass} text-lg h-10`; 
-      const alphaBtnClass = `${btnClass} h-11`; 
-      if (mode === 'r') {
-        return (
-          <div className="grid grid-cols-4 gap-1 p-0.5 max-w-sm mx-auto w-full">
-            <button className={numBtnClass} onClick={() => onPress('7')}>7</button>
-            <button className={numBtnClass} onClick={() => onPress('8')}>8</button>
-            <button className={numBtnClass} onClick={() => onPress('9')}>9</button>
-            <button className={`${numBtnClass} text-red-400 border-red-600`} onClick={onDelete}><Delete size={18} /></button>
-            <button className={numBtnClass} onClick={() => onPress('4')}>4</button>
-            <button className={numBtnClass} onClick={() => onPress('5')}>5</button>
-            <button className={numBtnClass} onClick={() => onPress('6')}>6</button>
-            <button className={`${numBtnClass} bg-cyan-900 text-white border-cyan-400`} onClick={onSubmit}><CornerDownLeft size={18} /></button>
-            <button className={numBtnClass} onClick={() => onPress('1')}>1</button>
-            <button className={numBtnClass} onClick={() => onPress('2')}>2</button>
-            <button className={numBtnClass} onClick={() => onPress('3')}>3</button>
-            <button className={`${numBtnClass} text-yellow-400 border-yellow-600 text-sm`} onClick={() => onPress('\\sqrt{2}')}>√2</button>
-            <button className={`${numBtnClass} text-yellow-400 border-yellow-600 text-sm`} onClick={() => onPress('\\sqrt{3}')}>√3</button>
-            <div className="col-span-3 grid grid-cols-3 gap-1">
-               <button className={`${numBtnClass} col-start-2`} onClick={() => onPress('0')}>0</button>
-            </div>
-          </div>
-        );
-      }
-      return (
-        <div className="grid grid-cols-3 gap-1.5 p-0.5 max-w-sm mx-auto w-full">
-          {ALPHA_CHOICES.map((choice) => (
-            <button key={choice.label} className={alphaBtnClass} onClick={() => onPress(choice.label)}>
-               <MathLabel latex={choice.label} className="pointer-events-none scale-75 origin-center" />
-            </button>
-          ))}
-          <button className={`${alphaBtnClass} text-red-400 border-red-600`} onClick={onDelete}><Delete size={18} /></button>
-          <div className="flex items-center justify-center text-gray-600 text-[10px]">SELECT</div>
-          <button className={`${alphaBtnClass} bg-cyan-900 text-white border-cyan-400`} onClick={onSubmit}><CornerDownLeft size={18} /></button>
-        </div>
-      );
+  }, []);
+  const [gameState, setGameState] = useState({
+    phase: GamePhase.START,
+    currentStage: 1,
+    hp: MAX_HP,
+    score: 0,
+    timeLeft: MAX_TIME,
+    totalMistakes: 0,
+    mistakeHistory: [],
+    combo: 0
+  });
+  const gameStateRef = useRef(gameState);
+  gameStateRef.current = gameState;
+  const [currentProblem, setCurrentProblem] = useState(null);
+  const currentProblemRef = useRef(null);
+  currentProblemRef.current = currentProblem;
+  const [inputR, setInputR] = useState("");
+  const [inputOperator, setInputOperator] = useState("+");
+  const [inputAlpha, setInputAlpha] = useState("");
+  const [activeField, setActiveField] = useState("r");
+  const [monsterState, setMonsterState] = useState("idle");
+  const [feedback, setFeedback] = useState("none");
+  const [screenShake, setScreenShake] = useState(false);
+  const [highScore, setHighScore] = useState(() => {
+    try {
+      return parseInt(localStorage.getItem("trig_synth_high_score") || "0", 10);
+    } catch {
+      return 0;
     }
-    
-    const MAX_HP = 3;
-    const MAX_TIME = 30;
-    const TOTAL_STAGES = 5;
-    
-    function App() {
-      // Preload images to prevent flickering or missing character
-      useEffect(() => {
-        Object.values(ASSETS).forEach(src => {
-          const img = new Image();
-          img.src = src;
-        });
-      }, []);
-    
-      const [gameState, setGameState] = useState({
-        phase: GamePhase.START as GamePhaseType,
-        currentStage: 1, 
-        hp: MAX_HP,
-        score: 0, 
-        timeLeft: MAX_TIME, 
-        totalMistakes: 0, 
-        mistakeHistory: [] as any[], 
-        combo: 0
+  });
+  const [isNewRecord, setIsNewRecord] = useState(false);
+  const timerRef = useRef(null);
+  const handleWrongRef = useRef(() => {
+  });
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+  const startTimer = useCallback(() => {
+    stopTimer();
+    let lastTick = Date.now();
+    let timeRemaining = MAX_TIME;
+    timerRef.current = window.setInterval(() => {
+      const now = Date.now();
+      const delta = (now - lastTick) / 1e3;
+      lastTick = now;
+      timeRemaining = Math.max(0, timeRemaining - delta);
+      setGameState((prev) => {
+        if (prev.phase !== GamePhase.PLAYING) return prev;
+        return { ...prev, timeLeft: timeRemaining };
       });
-      
-      const gameStateRef = useRef(gameState);
-      gameStateRef.current = gameState;
-    
-      const [currentProblem, setCurrentProblem] = useState<any>(null);
-      const currentProblemRef = useRef<any>(null);
-      currentProblemRef.current = currentProblem;
-    
-      const [inputR, setInputR] = useState('');
-      const [inputOperator, setInputOperator] = useState('+');
-      const [inputAlpha, setInputAlpha] = useState(''); 
-      const [activeField, setActiveField] = useState<'r' | 'alpha'>('r');
-      const [monsterState, setMonsterState] = useState('idle');
-      const [feedback, setFeedback] = useState('none');
-      const [screenShake, setScreenShake] = useState(false);
-      const [highScore, setHighScore] = useState(() => parseInt(localStorage.getItem('trig_synth_high_score') || '0', 10));
-      const [isNewRecord, setIsNewRecord] = useState(false);
-    
-      const timerRef = useRef<number | null>(null);
-      const handleWrongRef = useRef<(isTimeout: boolean) => void>(() => {});
-    
-      const stopTimer = useCallback(() => {
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
-        }
-      }, []);
-    
-      const startTimer = useCallback(() => {
+      if (timeRemaining <= 0) {
         stopTimer();
-        let lastTick = Date.now();
-        let timeRemaining = MAX_TIME;
-        timerRef.current = window.setInterval(() => {
-          const now = Date.now();
-          const delta = (now - lastTick) / 1000;
-          lastTick = now;
-          timeRemaining = Math.max(0, timeRemaining - delta);
-          
-          setGameState(prev => {
-            if (prev.phase !== GamePhase.PLAYING) return prev;
-            return { ...prev, timeLeft: timeRemaining };
-          });
-    
-          if (timeRemaining <= 0) {
-            stopTimer();
-            handleWrongRef.current(true);
-          }
-        }, 33);
-      }, [stopTimer]);
-    
-      const resetInputs = () => {
-        setInputR(''); setInputOperator('+'); setInputAlpha(''); setActiveField('r');
-      };
-    
-      const checkHighScore = useCallback((finalScore: number) => {
-        setHighScore(prev => {
-          if (finalScore > prev) {
-            localStorage.setItem('trig_synth_high_score', finalScore.toString());
-            setIsNewRecord(true);
-            return finalScore;
-          }
-          return prev;
-        });
-      }, []);
-    
-      const nextLevel = useCallback(() => {
-        const nextProb = generateProblem();
-        setCurrentProblem(nextProb);
-        currentProblemRef.current = nextProb;
-        resetInputs();
-        setFeedback('none');
-        stopTimer();
-        setGameState(prev => ({ ...prev, timeLeft: MAX_TIME }));
-        startTimer();
-      }, [startTimer, stopTimer]);
-    
-      const startGame = useCallback(() => {
-        setGameState({
-          phase: GamePhase.PLAYING, currentStage: 1, hp: MAX_HP,
-          score: 0, timeLeft: MAX_TIME, totalMistakes: 0, mistakeHistory: [], combo: 0
-        });
-        setIsNewRecord(false); setMonsterState('idle'); setFeedback('none');
-        nextLevel();
-      }, [nextLevel]);
-    
-      const goToTitle = useCallback(() => {
-        setGameState({
-          phase: GamePhase.START, currentStage: 1, hp: MAX_HP,
-          score: 0, timeLeft: MAX_TIME, totalMistakes: 0, mistakeHistory: [], combo: 0
-        });
-        setMonsterState('idle'); setFeedback('none'); stopTimer();
-      }, [stopTimer]);
-    
-      useEffect(() => { return stopTimer; }, [stopTimer]);
-    
-      useEffect(() => {
-        if (gameState.hp <= 0 && gameState.phase === GamePhase.PLAYING) {
-          stopTimer();
-          setGameState(prev => ({ ...prev, phase: GamePhase.GAME_OVER }));
-        }
-      }, [gameState.hp, gameState.phase, stopTimer]);
-    
-      const handleCorrect = () => {
-        stopTimer();
-        setFeedback('correct'); setMonsterState('hit');
-        
-        // Capture the current stage BEFORE the async timeout
-        const stageAtClear = gameStateRef.current.currentStage;
-        
-        setGameState(prev => {
-          const newCombo = prev.combo + 1;
-          const basePoints = 100;
-          const timeBonus = Math.floor(prev.timeLeft * 50);
-          let comboBonus = 0;
-          if (newCombo === 2) comboBonus = 500;
-          else if (newCombo >= 3) comboBonus = 1000;
-          const points = basePoints + timeBonus + comboBonus;
-          const newScore = prev.score + points;
-          return { ...prev, score: newScore, combo: newCombo };
-        });
-    
-        setTimeout(() => {
-          if (stageAtClear >= TOTAL_STAGES) {
-            setGameState(p => {
-               checkHighScore(p.score);
-               return { ...p, phase: GamePhase.VICTORY };
-            });
-          } else {
-            setGameState(p => ({ ...p, currentStage: p.currentStage + 1 }));
-            setMonsterState('idle');
-            nextLevel();
-          }
-        }, 1500); 
-      };
-    
-      const handleWrong = useCallback((isTimeout: boolean) => {
-        stopTimer();
-        setFeedback(isTimeout ? 'timeout' : 'wrong');
-        setMonsterState('attack'); setScreenShake(true);
-        
-        const currProb = currentProblemRef.current;
-        if (currProb) {
-           setGameState(prev => ({
-             ...prev, totalMistakes: prev.totalMistakes + 1, combo: 0,
-             mistakeHistory: [
-               ...prev.mistakeHistory, 
-               { problem: currProb, userR: inputR || '?', userOperator: inputOperator, userAlpha: inputAlpha || '?', reason: isTimeout ? 'timeout' : 'wrong' }
-             ]
-           }));
-        }
-        
-        setTimeout(() => {
-          setScreenShake(false); setMonsterState('idle'); setFeedback('none');
-          
-          const currentHp = gameStateRef.current.hp;
-          if (currentHp - 1 <= 0) {
-            setGameState(prev => {
-              checkHighScore(prev.score);
-              return { ...prev, hp: 0, phase: GamePhase.GAME_OVER };
-            });
-          } else {
-            setGameState(prev => ({ ...prev, hp: prev.hp - 1 }));
-            nextLevel();
-          }
-        }, 1000);
-      }, [inputR, inputOperator, inputAlpha, checkHighScore, nextLevel, stopTimer]);
-    
-      useEffect(() => { handleWrongRef.current = handleWrong; }, [handleWrong]);
-    
-      const checkAnswer = () => {
-        if (!currentProblem || gameState.phase !== GamePhase.PLAYING || feedback !== 'none') return;
-        if (evaluateInput(inputR, inputOperator, inputAlpha, currentProblem)) {
-          handleCorrect();
-        } else {
-          handleWrong(false);
-        }
-      };
-    
-      const handleKeyPress = (val: string) => {
-        if (gameState.phase !== GamePhase.PLAYING) return;
-        if (activeField === 'r') setInputR(prev => prev + val);
-        else if (activeField === 'alpha') setInputAlpha(val);
-      };
-    
-      const handleDelete = () => {
-        if (gameState.phase !== GamePhase.PLAYING) return;
-        if (activeField === 'r') setInputR(prev => prev.slice(0, -1));
-        else if (activeField === 'alpha') setInputAlpha('');
-      };
-      
-      const toggleOperator = () => {
-        if (gameState.phase !== GamePhase.PLAYING) return;
-        setInputOperator(prev => prev === '+' ? '-' : '+');
-      };
-    
-      if (gameState.phase === GamePhase.START) {
-        return (
-          <div className="fixed inset-0 h-[100dvh] bg-black text-white flex flex-col items-center justify-center p-4 relative scanlines overflow-hidden font-['Press_Start_2P',cursive]">
-            <h1 className="text-3xl md:text-6xl text-center text-cyan-400 mb-6 neon-blue font-bold tracking-tighter leading-normal">
-              TRIG<br/>SYNTH<br/>WARRIOR
-            </h1>
-            <div className="bg-gray-900 border-2 border-cyan-600 p-4 md:p-6 rounded-lg max-w-md w-full text-center shadow-[0_0_20px_rgba(0,188,212,0.4)] relative">
-              {highScore > 0 && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-black border border-cyan-600 text-yellow-400 text-xs px-3 py-1 rounded-full flex items-center gap-1 shadow-[0_0_10px_cyan] font-bold">
-                  <Trophy size={14} className="text-yellow-400" />
-                  HI-SCORE: {highScore}
-                </div>
-              )}
-              <p className="mb-4 text-xs md:text-sm text-cyan-200 mt-2 leading-relaxed">
-                <span className="text-yellow-400">sin</span> と <span className="text-yellow-400">cos</span> を合成してバグモンスターを撃破せよ
-              </p>
-              <div className="text-[10px] md:text-xs text-left mb-6 space-y-2 bg-black p-3 rounded border border-gray-700 leading-relaxed">
-                <div className="flex items-center gap-1">
-                  <span>1.</span><MathLabel latex={"a \\sin \\theta + b \\cos \\theta"} className="inline-block" /><span>を変形せよ</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span>2. 目標形式:</span><MathLabel latex={"r \\sin(\\theta \\pm \\alpha)"} className="inline-block" />
-                </div>
-                <div className="flex items-center gap-1 flex-wrap">
-                  <span>3.</span><MathLabel latex={"r"} className="inline-block" /><span>と</span><MathLabel latex={"\\alpha"} className="inline-block" /><span>を入力 (<span className="text-yellow-400">ボタン選択</span>)</span>
-                </div>
-              </div>
-              <button onClick={startGame} className="w-full bg-cyan-700 hover:bg-cyan-600 text-white font-bold py-3 px-4 rounded border-b-4 border-cyan-900 transition-all flex items-center justify-center gap-2">
-                <Play size={20} /> ミッション開始
-              </button>
-            </div>
-            <div className="absolute bottom-4 text-[10px] text-gray-600">v1.6.1 | SYSTEM READY</div>
-          </div>
-        );
+        handleWrongRef.current(true);
       }
-    
-      if (gameState.phase === GamePhase.VICTORY || gameState.phase === GamePhase.GAME_OVER) {
-        const isVictory = gameState.phase === GamePhase.VICTORY;
-        const isPerfect = isVictory && gameState.totalMistakes === 0;
-        let bgImage = isVictory ? (isPerfect ? ASSETS.WIN_PERFECT : ASSETS.WIN_MISS) : ASSETS.DEFEAT;
-        return (
-          <div className="fixed inset-0 h-[100dvh] bg-black text-white flex flex-col items-center p-4 relative scanlines overflow-y-auto font-['Press_Start_2P',cursive]">
-            {isPerfect && (
-                <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-                    <div className="absolute inset-0 bg-gradient-to-t from-yellow-900/30 to-transparent animate-pulse" />
-                    {[...Array(40)].map((_, i) => (
-                        <div key={i} className="confetti" style={{ left: `${Math.random() * 100}%`, animationDelay: `${Math.random() * 4}s`, animationDuration: `${2 + Math.random() * 3}s`, backgroundColor: ['#ffd700', '#ff00ff', '#00ffff', '#ffffff'][Math.floor(Math.random() * 4)] }} />
-                    ))}
-                </div>
-            )}
-            <div className="w-full max-w-2xl flex flex-col items-center z-10 py-4">
-              <h1 className={cn("text-2xl md:text-5xl mb-2 text-center font-black tracking-widest", isVictory ? (isPerfect ? 'text-yellow-400 drop-shadow-[0_0_15px_rgba(255,215,0,0.8)] animate-pulse' : 'text-green-400 neon-blue') : 'text-red-500 neon-red')}>
-                {isVictory ? (isPerfect ? "PERFECT SYNC!!" : "MISSION CLEAR") : "SYSTEM FAILURE"}
-              </h1>
-              {isPerfect && (
-                  <div className="flex items-center gap-2 mb-4 text-cyan-200 text-sm md:text-lg animate-bounce font-bold tracking-widest border-y-2 border-cyan-500 py-1 px-6 bg-black/70 shadow-[0_0_10px_cyan]">
-                      <Trophy className="text-yellow-400" size={20} /><span>S-RANK: GODLIKE</span><Star className="text-yellow-400" size={20} fill="currentColor" />
-                  </div>
-              )}
-              {isNewRecord && (
-                  <div className="flex items-center gap-2 mb-4 text-yellow-200 text-sm md:text-lg animate-bounce font-bold tracking-widest border-y-2 border-yellow-500 py-1 px-6 bg-yellow-900/40 shadow-[0_0_20px_yellow] relative overflow-hidden">
-                      <div className="absolute inset-0 bg-white/20 animate-pulse mix-blend-overlay"></div>
-                      <Trophy className="text-yellow-400" size={20} /><span>NEW RECORD!</span><Trophy className="text-yellow-400" size={20} />
-                  </div>
-              )}
-              <div className={cn("relative w-48 h-48 md:w-64 md:h-64 mb-6 border-4 rounded-lg bg-gray-900 overflow-hidden shadow-2xl shrink-0 mt-4", isPerfect ? 'border-yellow-500 shadow-[0_0_30px_rgba(255,215,0,0.5)]' : 'border-gray-800')}>
-                <img src={bgImage} alt="Result" className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(0,188,212,0.4)]" />
-              </div>
-              <div className="bg-gray-900 border border-gray-700 p-4 md:p-6 rounded w-full mb-6 shrink-0 font-['Press_Start_2P',cursive]">
-                <div className="flex justify-between mb-2">
-                  <span className="text-gray-400">FINAL SCORE</span><span className={cn("text-lg md:text-2xl font-bold", isPerfect ? 'text-yellow-400' : 'text-white')}>{gameState.score}</span>
-                </div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-gray-400">MISTAKES</span><span className={cn("text-lg md:text-2xl", gameState.totalMistakes === 0 ? 'text-green-400' : 'text-red-400')}>{gameState.totalMistakes}</span>
-                </div>
-              </div>
-              {gameState.mistakeHistory.length > 0 && (
-                 <div className="w-full bg-red-900/20 border border-red-800 p-4 rounded mb-6 shrink-0">
-                    <h3 className="text-red-400 mb-4 flex items-center gap-2"><Frown size={20}/> REVIEW ERRORS</h3>
-                    <div className="space-y-4 max-h-48 overflow-y-auto pr-2">
-                      {gameState.mistakeHistory.map((m, idx) => (
-                          <div key={idx + m.problem.id} className="bg-black/50 p-3 rounded border border-red-900/50 relative">
-                            {m.reason === 'timeout' && (
-                              <div className="absolute top-2 right-2 bg-red-600 text-white text-[10px] px-2 py-0.5 rounded font-bold flex items-center gap-1 animate-pulse"><Clock size={10} /> TIME UP</div>
-                            )}
-                            <div className="mb-2 text-xs text-gray-500">Problem:</div><MathLabel latex={m.problem.latex} className="text-white mb-2" />
-                            <div className="flex flex-col gap-1 mt-2">
-                               <div className="text-xs text-red-400">You: <MathLabel latex={`r=${m.userR}, \\sin(\\theta ${m.userOperator} ${m.userAlpha})`} className="inline"/></div>
-                               <div className="text-xs text-green-400">Correct: <MathLabel latex={`r=${m.problem.correctR}, \\alpha=${m.problem.correctAlpha}`} className="inline"/></div>
-                            </div>
-                          </div>
-                      ))}
-                    </div>
-                 </div>
-              )}
-              <button onClick={goToTitle} className={cn("py-3 px-8 rounded border-2 font-bold flex items-center justify-center gap-2 mb-8 shrink-0 transition-all active:scale-95 w-full md:w-auto", isPerfect ? 'bg-yellow-900/50 border-yellow-400 text-yellow-100 hover:bg-yellow-800' : 'bg-gray-800 hover:bg-gray-700 border-cyan-500 text-white')}>
-                <Home size={20} /> RETURN TO TITLE
-              </button>
-            </div>
-          </div>
-        );
+    }, 33);
+  }, [stopTimer]);
+  const resetInputs = () => {
+    setInputR("");
+    setInputOperator("+");
+    setInputAlpha("");
+    setActiveField("r");
+  };
+  const checkHighScore = useCallback((finalScore) => {
+    setHighScore((prev) => {
+      if (finalScore > prev) {
+        try {
+          localStorage.setItem("trig_synth_high_score", finalScore.toString());
+        } catch {
+        }
+        setIsNewRecord(true);
+        return finalScore;
       }
-    
-      return (
-        <div className={cn("fixed inset-0 h-[100dvh] w-full text-white bg-gray-900 flex flex-col scanlines overflow-hidden font-['Press_Start_2P',cursive]", screenShake && 'animate-screen-shake')}>
-          <div className="h-10 bg-black border-b border-gray-800 flex justify-between items-center px-2 md:px-4 z-20 shrink-0">
-            <div className="flex space-x-1">
-              {[...Array(MAX_HP)].map((_, i) => <Heart key={i} className={cn("w-6 h-6", i < gameState.hp ? 'fill-red-500 text-red-500 neon-red' : 'text-gray-800')} />)}
-            </div>
-            <div className="flex flex-col items-center w-16">
-                <div className="text-[8px] text-cyan-600">TIME</div>
-                <div className={cn("text-base font-bold leading-none tabular-nums", gameState.timeLeft < 10 ? 'text-red-500 animate-pulse' : 'text-cyan-400')}>{gameState.timeLeft.toFixed(2)}</div>
-            </div>
-            <div className="flex flex-col items-end w-20">
-                <div className="text-[8px] text-yellow-600 truncate min-w-full text-right h-[12px]">
-                  {gameState.combo > 1 ? <span className="text-orange-400 font-bold animate-pulse">{gameState.combo} COMBO!</span> : "SCORE"}
-                </div>
-                <div className={cn("text-base leading-none", gameState.combo > 1 ? "text-orange-400 font-bold" : "text-yellow-400")}>{gameState.score.toString().padStart(5, '0')}</div>
-            </div>
-          </div>
-    
-          <div className="flex-1 flex flex-col relative w-full max-w-3xl mx-auto overflow-hidden">
-            <div className="relative flex-1 min-h-0 flex items-center justify-center bg-gradient-to-b from-gray-900 to-black overflow-hidden p-1">
-              <div className="absolute top-2 left-2 text-[10px] text-gray-600 bg-black/50 px-2 py-0.5 rounded border border-gray-800 z-10">STAGE {gameState.currentStage}/{TOTAL_STAGES}</div>
-              <MonsterDisplay state={monsterState} className="w-full h-full" />
-              {feedback === 'correct' && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center z-30 pointer-events-none">
-                   <div className="text-3xl md:text-5xl text-yellow-300 font-bold animate-ping" style={{textShadow: '0 0 20px yellow'}}>CRITICAL!</div>
-                   {gameState.combo > 1 && <div className="text-xl md:text-3xl text-orange-400 font-bold mt-2 neon-red animate-bounce" style={{textShadow: '0 0 10px orange'}}>{gameState.combo} COMBO!</div>}
-                </div>
-              )}
-              {(feedback === 'wrong' || feedback === 'timeout') && (
-                <div className="absolute inset-0 bg-red-500/20 z-30 pointer-events-none animate-pulse">
-                    {feedback === 'timeout' && <div className="absolute inset-0 flex items-center justify-center"><div className="text-3xl md:text-4xl text-red-500 font-bold bg-black/80 px-4 py-2 rounded border-2 border-red-500 neon-red">TIME UP</div></div>}
-                </div>
-              )}
-            </div>
-    
-            <div className="bg-black border-t-2 border-cyan-900 p-1 pb-safe z-20 shrink-0">
-              <div className="text-center py-1 mb-1 bg-gray-900 rounded border border-gray-700 shadow-inner min-h-[44px] flex items-center justify-center">
-                 {currentProblem && <MathLabel latex={currentProblem.latex} className="text-sm md:text-lg text-white neon-blue" displayMode={true} />}
-              </div>
-              <div className="flex items-center justify-center gap-1 md:gap-2 mb-1">
-                 <div className="flex items-center gap-0.5">
-                     <div className="text-gray-400 text-xs md:text-sm"><MathLabel latex={"r="} /></div>
-                     <div onClick={() => setActiveField('r')} className={cn("h-9 w-14 md:w-16 bg-gray-800 border-2 rounded flex items-center justify-center text-base md:text-lg cursor-pointer transition-colors", activeField === 'r' ? 'border-cyan-400 text-white shadow-[0_0_10px_cyan]' : 'border-gray-600 text-gray-400')}>
-                        {inputR === '' ? <span className="animate-pulse text-gray-600">_</span> : <MathLabel latex={inputR} />}
-                     </div>
-                 </div>
-                 <div className="flex items-center gap-0.5 bg-gray-900/50 p-0.5 rounded border border-gray-800 relative z-10">
-                     <div className="text-gray-400 text-xs md:text-sm"><MathLabel latex={"\\sin(\\theta"} /></div>
-                     <button onClick={toggleOperator} className="h-7 w-8 md:w-10 bg-gray-800 border-2 rounded flex items-center justify-center text-sm md:text-base cursor-pointer transition-colors mx-0.5 border-green-400 text-white shadow-[0_0_5px_lime] active:scale-95 z-20">
-                        {inputOperator === '+' ? <Plus size={16}/> : <Minus size={16}/>}
-                     </button>
-                     <div onClick={() => setActiveField('alpha')} className={cn("h-9 w-14 md:w-16 bg-gray-800 border-2 rounded flex items-center justify-center text-base md:text-lg cursor-pointer transition-colors relative z-20", activeField === 'alpha' ? 'border-purple-400 text-white shadow-[0_0_10px_purple]' : 'border-gray-600 text-gray-400')}>
-                        {inputAlpha === '' ? <span className="animate-pulse text-gray-600">?</span> : <MathLabel latex={inputAlpha} />}
-                     </div>
-                     <div className="text-gray-400 text-xs md:text-sm">)</div>
-                 </div>
-              </div>
-              <Keypad mode={activeField} onPress={handleKeyPress} onDelete={handleDelete} onSubmit={checkAnswer} />
-            </div>
-          </div>
-        </div>
-      );
+      return prev;
+    });
+  }, []);
+  const nextLevel = useCallback(() => {
+    const nextProb = generateProblem();
+    setCurrentProblem(nextProb);
+    currentProblemRef.current = nextProb;
+    resetInputs();
+    setFeedback("none");
+    stopTimer();
+    setGameState((prev) => ({ ...prev, timeLeft: MAX_TIME }));
+    startTimer();
+  }, [startTimer, stopTimer]);
+  const startGame = useCallback(() => {
+    setGameState({
+      phase: GamePhase.PLAYING,
+      currentStage: 1,
+      hp: MAX_HP,
+      score: 0,
+      timeLeft: MAX_TIME,
+      totalMistakes: 0,
+      mistakeHistory: [],
+      combo: 0
+    });
+    setIsNewRecord(false);
+    setMonsterState("idle");
+    setFeedback("none");
+    nextLevel();
+  }, [nextLevel]);
+  const goToTitle = useCallback(() => {
+    setGameState({
+      phase: GamePhase.START,
+      currentStage: 1,
+      hp: MAX_HP,
+      score: 0,
+      timeLeft: MAX_TIME,
+      totalMistakes: 0,
+      mistakeHistory: [],
+      combo: 0
+    });
+    setMonsterState("idle");
+    setFeedback("none");
+    stopTimer();
+  }, [stopTimer]);
+  useEffect(() => {
+    return stopTimer;
+  }, [stopTimer]);
+  useEffect(() => {
+    if (gameState.hp <= 0 && gameState.phase === GamePhase.PLAYING) {
+      stopTimer();
+      setGameState((prev) => ({ ...prev, phase: GamePhase.GAME_OVER }));
     }
-    
-    
+  }, [gameState.hp, gameState.phase, stopTimer]);
+  const handleCorrect = () => {
+    stopTimer();
+    setFeedback("correct");
+    setMonsterState("hit");
+    const stageAtClear = gameStateRef.current.currentStage;
+    setGameState((prev) => {
+      const newCombo = prev.combo + 1;
+      const basePoints = 100;
+      const timeBonus = Math.floor(prev.timeLeft * 50);
+      let comboBonus = 0;
+      if (newCombo === 2) comboBonus = 500;
+      else if (newCombo >= 3) comboBonus = 1e3;
+      const points = basePoints + timeBonus + comboBonus;
+      const newScore = prev.score + points;
+      return { ...prev, score: newScore, combo: newCombo };
+    });
+    setTimeout(() => {
+      if (stageAtClear >= TOTAL_STAGES) {
+        setGameState((p) => {
+          checkHighScore(p.score);
+          return { ...p, phase: GamePhase.VICTORY };
+        });
+      } else {
+        setGameState((p) => ({ ...p, currentStage: p.currentStage + 1 }));
+        setMonsterState("idle");
+        nextLevel();
+      }
+    }, 1500);
+  };
+  const handleWrong = useCallback((isTimeout) => {
+    stopTimer();
+    setFeedback(isTimeout ? "timeout" : "wrong");
+    setMonsterState("attack");
+    setScreenShake(true);
+    const currProb = currentProblemRef.current;
+    if (currProb) {
+      setGameState((prev) => ({
+        ...prev,
+        totalMistakes: prev.totalMistakes + 1,
+        combo: 0,
+        mistakeHistory: [
+          ...prev.mistakeHistory,
+          { problem: currProb, userR: inputR || "?", userOperator: inputOperator, userAlpha: inputAlpha || "?", reason: isTimeout ? "timeout" : "wrong" }
+        ]
+      }));
+    }
+    setTimeout(() => {
+      setScreenShake(false);
+      setMonsterState("idle");
+      setFeedback("none");
+      const currentHp = gameStateRef.current.hp;
+      if (currentHp - 1 <= 0) {
+        setGameState((prev) => {
+          checkHighScore(prev.score);
+          return { ...prev, hp: 0, phase: GamePhase.GAME_OVER };
+        });
+      } else {
+        setGameState((prev) => ({ ...prev, hp: prev.hp - 1 }));
+        nextLevel();
+      }
+    }, 1e3);
+  }, [inputR, inputOperator, inputAlpha, checkHighScore, nextLevel, stopTimer]);
+  useEffect(() => {
+    handleWrongRef.current = handleWrong;
+  }, [handleWrong]);
+  const checkAnswer = () => {
+    if (!currentProblem || gameState.phase !== GamePhase.PLAYING || feedback !== "none") return;
+    if (evaluateInput(inputR, inputOperator, inputAlpha, currentProblem)) {
+      handleCorrect();
+    } else {
+      handleWrong(false);
+    }
+  };
+  const handleKeyPress = (val) => {
+    if (gameState.phase !== GamePhase.PLAYING) return;
+    if (activeField === "r") setInputR((prev) => prev + val);
+    else if (activeField === "alpha") setInputAlpha(val);
+  };
+  const handleDelete = () => {
+    if (gameState.phase !== GamePhase.PLAYING) return;
+    if (activeField === "r") setInputR((prev) => prev.slice(0, -1));
+    else if (activeField === "alpha") setInputAlpha("");
+  };
+  const toggleOperator = () => {
+    if (gameState.phase !== GamePhase.PLAYING) return;
+    setInputOperator((prev) => prev === "+" ? "-" : "+");
+  };
+  if (gameState.phase === GamePhase.START) {
+    return /* @__PURE__ */ jsxs("div", { className: "fixed inset-0 h-[100dvh] bg-black text-white flex flex-col items-center justify-center p-4 relative scanlines overflow-hidden font-['Press_Start_2P',cursive]", children: [
+      /* @__PURE__ */ jsxs("h1", { className: "text-3xl md:text-6xl text-center text-cyan-400 mb-6 neon-blue font-bold tracking-tighter leading-normal", children: [
+        "TRIG",
+        /* @__PURE__ */ jsx("br", {}),
+        "SYNTH",
+        /* @__PURE__ */ jsx("br", {}),
+        "WARRIOR"
+      ] }),
+      /* @__PURE__ */ jsxs("div", { className: "bg-gray-900 border-2 border-cyan-600 p-4 md:p-6 rounded-lg max-w-md w-full text-center shadow-[0_0_20px_rgba(0,188,212,0.4)] relative", children: [
+        highScore > 0 && /* @__PURE__ */ jsxs("div", { className: "absolute -top-4 left-1/2 -translate-x-1/2 bg-black border border-cyan-600 text-yellow-400 text-xs px-3 py-1 rounded-full flex items-center gap-1 shadow-[0_0_10px_cyan] font-bold", children: [
+          /* @__PURE__ */ jsx(Trophy, { size: 14, className: "text-yellow-400" }),
+          "HI-SCORE: ",
+          highScore
+        ] }),
+        /* @__PURE__ */ jsxs("p", { className: "mb-4 text-xs md:text-sm text-cyan-200 mt-2 leading-relaxed", children: [
+          /* @__PURE__ */ jsx("span", { className: "text-yellow-400", children: "sin" }),
+          " \u3068 ",
+          /* @__PURE__ */ jsx("span", { className: "text-yellow-400", children: "cos" }),
+          " \u3092\u5408\u6210\u3057\u3066\u30D0\u30B0\u30E2\u30F3\u30B9\u30BF\u30FC\u3092\u6483\u7834\u305B\u3088"
+        ] }),
+        /* @__PURE__ */ jsxs("div", { className: "text-[10px] md:text-xs text-left mb-6 space-y-2 bg-black p-3 rounded border border-gray-700 leading-relaxed", children: [
+          /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-1", children: [
+            /* @__PURE__ */ jsx("span", { children: "1." }),
+            /* @__PURE__ */ jsx(MathLabel, { latex: "a \\sin \\theta + b \\cos \\theta", className: "inline-block" }),
+            /* @__PURE__ */ jsx("span", { children: "\u3092\u5909\u5F62\u305B\u3088" })
+          ] }),
+          /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-1", children: [
+            /* @__PURE__ */ jsx("span", { children: "2. \u76EE\u6A19\u5F62\u5F0F:" }),
+            /* @__PURE__ */ jsx(MathLabel, { latex: "r \\sin(\\theta \\pm \\alpha)", className: "inline-block" })
+          ] }),
+          /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-1 flex-wrap", children: [
+            /* @__PURE__ */ jsx("span", { children: "3." }),
+            /* @__PURE__ */ jsx(MathLabel, { latex: "r", className: "inline-block" }),
+            /* @__PURE__ */ jsx("span", { children: "\u3068" }),
+            /* @__PURE__ */ jsx(MathLabel, { latex: "\\alpha", className: "inline-block" }),
+            /* @__PURE__ */ jsxs("span", { children: [
+              "\u3092\u5165\u529B (",
+              /* @__PURE__ */ jsx("span", { className: "text-yellow-400", children: "\u30DC\u30BF\u30F3\u9078\u629E" }),
+              ")"
+            ] })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxs("button", { onClick: startGame, className: "w-full bg-cyan-700 hover:bg-cyan-600 text-white font-bold py-3 px-4 rounded border-b-4 border-cyan-900 transition-all flex items-center justify-center gap-2", children: [
+          /* @__PURE__ */ jsx(Play, { size: 20 }),
+          " \u30DF\u30C3\u30B7\u30E7\u30F3\u958B\u59CB"
+        ] })
+      ] }),
+      /* @__PURE__ */ jsx("div", { className: "absolute bottom-4 text-[10px] text-gray-600", children: "v1.6.1 | SYSTEM READY" })
+    ] });
+  }
+  if (gameState.phase === GamePhase.VICTORY || gameState.phase === GamePhase.GAME_OVER) {
+    const isVictory = gameState.phase === GamePhase.VICTORY;
+    const isPerfect = isVictory && gameState.totalMistakes === 0;
+    let bgImage = isVictory ? isPerfect ? ASSETS.WIN_PERFECT : ASSETS.WIN_MISS : ASSETS.DEFEAT;
+    return /* @__PURE__ */ jsxs("div", { className: "fixed inset-0 h-[100dvh] bg-black text-white flex flex-col items-center p-4 relative scanlines overflow-y-auto font-['Press_Start_2P',cursive]", children: [
+      isPerfect && /* @__PURE__ */ jsxs("div", { className: "absolute inset-0 overflow-hidden pointer-events-none z-0", children: [
+        /* @__PURE__ */ jsx("div", { className: "absolute inset-0 bg-gradient-to-t from-yellow-900/30 to-transparent animate-pulse" }),
+        [...Array(40)].map((_, i) => /* @__PURE__ */ jsx("div", { className: "confetti", style: { left: `${Math.random() * 100}%`, animationDelay: `${Math.random() * 4}s`, animationDuration: `${2 + Math.random() * 3}s`, backgroundColor: ["#ffd700", "#ff00ff", "#00ffff", "#ffffff"][Math.floor(Math.random() * 4)] } }, i))
+      ] }),
+      /* @__PURE__ */ jsxs("div", { className: "w-full max-w-2xl flex flex-col items-center z-10 py-4", children: [
+        /* @__PURE__ */ jsx("h1", { className: cn("text-2xl md:text-5xl mb-2 text-center font-black tracking-widest", isVictory ? isPerfect ? "text-yellow-400 drop-shadow-[0_0_15px_rgba(255,215,0,0.8)] animate-pulse" : "text-green-400 neon-blue" : "text-red-500 neon-red"), children: isVictory ? isPerfect ? "PERFECT SYNC!!" : "MISSION CLEAR" : "SYSTEM FAILURE" }),
+        isPerfect && /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-2 mb-4 text-cyan-200 text-sm md:text-lg animate-bounce font-bold tracking-widest border-y-2 border-cyan-500 py-1 px-6 bg-black/70 shadow-[0_0_10px_cyan]", children: [
+          /* @__PURE__ */ jsx(Trophy, { className: "text-yellow-400", size: 20 }),
+          /* @__PURE__ */ jsx("span", { children: "S-RANK: GODLIKE" }),
+          /* @__PURE__ */ jsx(Star, { className: "text-yellow-400", size: 20, fill: "currentColor" })
+        ] }),
+        isNewRecord && /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-2 mb-4 text-yellow-200 text-sm md:text-lg animate-bounce font-bold tracking-widest border-y-2 border-yellow-500 py-1 px-6 bg-yellow-900/40 shadow-[0_0_20px_yellow] relative overflow-hidden", children: [
+          /* @__PURE__ */ jsx("div", { className: "absolute inset-0 bg-white/20 animate-pulse mix-blend-overlay" }),
+          /* @__PURE__ */ jsx(Trophy, { className: "text-yellow-400", size: 20 }),
+          /* @__PURE__ */ jsx("span", { children: "NEW RECORD!" }),
+          /* @__PURE__ */ jsx(Trophy, { className: "text-yellow-400", size: 20 })
+        ] }),
+        /* @__PURE__ */ jsx("div", { className: cn("relative w-48 h-48 md:w-64 md:h-64 mb-6 border-4 rounded-lg bg-gray-900 overflow-hidden shadow-2xl shrink-0 mt-4", isPerfect ? "border-yellow-500 shadow-[0_0_30px_rgba(255,215,0,0.5)]" : "border-gray-800"), children: /* @__PURE__ */ jsx("img", { src: bgImage, alt: "Result", className: "w-full h-full object-contain drop-shadow-[0_0_15px_rgba(0,188,212,0.4)]" }) }),
+        /* @__PURE__ */ jsxs("div", { className: "bg-gray-900 border border-gray-700 p-4 md:p-6 rounded w-full mb-6 shrink-0 font-['Press_Start_2P',cursive]", children: [
+          /* @__PURE__ */ jsxs("div", { className: "flex justify-between mb-2", children: [
+            /* @__PURE__ */ jsx("span", { className: "text-gray-400", children: "FINAL SCORE" }),
+            /* @__PURE__ */ jsx("span", { className: cn("text-lg md:text-2xl font-bold", isPerfect ? "text-yellow-400" : "text-white"), children: gameState.score })
+          ] }),
+          /* @__PURE__ */ jsxs("div", { className: "flex justify-between mb-2", children: [
+            /* @__PURE__ */ jsx("span", { className: "text-gray-400", children: "MISTAKES" }),
+            /* @__PURE__ */ jsx("span", { className: cn("text-lg md:text-2xl", gameState.totalMistakes === 0 ? "text-green-400" : "text-red-400"), children: gameState.totalMistakes })
+          ] })
+        ] }),
+        gameState.mistakeHistory.length > 0 && /* @__PURE__ */ jsxs("div", { className: "w-full bg-red-900/20 border border-red-800 p-4 rounded mb-6 shrink-0", children: [
+          /* @__PURE__ */ jsxs("h3", { className: "text-red-400 mb-4 flex items-center gap-2", children: [
+            /* @__PURE__ */ jsx(Frown, { size: 20 }),
+            " REVIEW ERRORS"
+          ] }),
+          /* @__PURE__ */ jsx("div", { className: "space-y-4 max-h-48 overflow-y-auto pr-2", children: gameState.mistakeHistory.map((m, idx) => /* @__PURE__ */ jsxs("div", { className: "bg-black/50 p-3 rounded border border-red-900/50 relative", children: [
+            m.reason === "timeout" && /* @__PURE__ */ jsxs("div", { className: "absolute top-2 right-2 bg-red-600 text-white text-[10px] px-2 py-0.5 rounded font-bold flex items-center gap-1 animate-pulse", children: [
+              /* @__PURE__ */ jsx(Clock, { size: 10 }),
+              " TIME UP"
+            ] }),
+            /* @__PURE__ */ jsx("div", { className: "mb-2 text-xs text-gray-500", children: "Problem:" }),
+            /* @__PURE__ */ jsx(MathLabel, { latex: m.problem.latex, className: "text-white mb-2" }),
+            /* @__PURE__ */ jsxs("div", { className: "flex flex-col gap-1 mt-2", children: [
+              /* @__PURE__ */ jsxs("div", { className: "text-xs text-red-400", children: [
+                "You: ",
+                /* @__PURE__ */ jsx(MathLabel, { latex: `r=${m.userR}, \\sin(\\theta ${m.userOperator} ${m.userAlpha})`, className: "inline" })
+              ] }),
+              /* @__PURE__ */ jsxs("div", { className: "text-xs text-green-400", children: [
+                "Correct: ",
+                /* @__PURE__ */ jsx(MathLabel, { latex: `r=${m.problem.correctR}, \\alpha=${m.problem.correctAlpha}`, className: "inline" })
+              ] })
+            ] })
+          ] }, idx + m.problem.id)) })
+        ] }),
+        /* @__PURE__ */ jsxs("button", { onClick: goToTitle, className: cn("py-3 px-8 rounded border-2 font-bold flex items-center justify-center gap-2 mb-8 shrink-0 transition-all active:scale-95 w-full md:w-auto", isPerfect ? "bg-yellow-900/50 border-yellow-400 text-yellow-100 hover:bg-yellow-800" : "bg-gray-800 hover:bg-gray-700 border-cyan-500 text-white"), children: [
+          /* @__PURE__ */ jsx(Home, { size: 20 }),
+          " RETURN TO TITLE"
+        ] })
+      ] })
+    ] });
+  }
+  return /* @__PURE__ */ jsxs("div", { className: cn("fixed inset-0 h-[100dvh] w-full text-white bg-gray-900 flex flex-col scanlines overflow-hidden font-['Press_Start_2P',cursive]", screenShake && "animate-screen-shake"), children: [
+    /* @__PURE__ */ jsxs("div", { className: "h-10 bg-black border-b border-gray-800 flex justify-between items-center px-2 md:px-4 z-20 shrink-0", children: [
+      /* @__PURE__ */ jsx("div", { className: "flex space-x-1", children: [...Array(MAX_HP)].map((_, i) => /* @__PURE__ */ jsx(Heart, { className: cn("w-6 h-6", i < gameState.hp ? "fill-red-500 text-red-500 neon-red" : "text-gray-800") }, i)) }),
+      /* @__PURE__ */ jsxs("div", { className: "flex flex-col items-center w-16", children: [
+        /* @__PURE__ */ jsx("div", { className: "text-[8px] text-cyan-600", children: "TIME" }),
+        /* @__PURE__ */ jsx("div", { className: cn("text-base font-bold leading-none tabular-nums", gameState.timeLeft < 10 ? "text-red-500 animate-pulse" : "text-cyan-400"), children: gameState.timeLeft.toFixed(2) })
+      ] }),
+      /* @__PURE__ */ jsxs("div", { className: "flex flex-col items-end w-20", children: [
+        /* @__PURE__ */ jsx("div", { className: "text-[8px] text-yellow-600 truncate min-w-full text-right h-[12px]", children: gameState.combo > 1 ? /* @__PURE__ */ jsxs("span", { className: "text-orange-400 font-bold animate-pulse", children: [
+          gameState.combo,
+          " COMBO!"
+        ] }) : "SCORE" }),
+        /* @__PURE__ */ jsx("div", { className: cn("text-base leading-none", gameState.combo > 1 ? "text-orange-400 font-bold" : "text-yellow-400"), children: gameState.score.toString().padStart(5, "0") })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxs("div", { className: "flex-1 flex flex-col relative w-full max-w-3xl mx-auto overflow-hidden", children: [
+      /* @__PURE__ */ jsxs("div", { className: "relative flex-1 min-h-0 flex items-center justify-center bg-gradient-to-b from-gray-900 to-black overflow-hidden p-1", children: [
+        /* @__PURE__ */ jsxs("div", { className: "absolute top-2 left-2 text-[10px] text-gray-600 bg-black/50 px-2 py-0.5 rounded border border-gray-800 z-10", children: [
+          "STAGE ",
+          gameState.currentStage,
+          "/",
+          TOTAL_STAGES
+        ] }),
+        /* @__PURE__ */ jsx(MonsterDisplay, { state: monsterState, className: "w-full h-full" }),
+        feedback === "correct" && /* @__PURE__ */ jsxs("div", { className: "absolute inset-0 flex flex-col items-center justify-center z-30 pointer-events-none", children: [
+          /* @__PURE__ */ jsx("div", { className: "text-3xl md:text-5xl text-yellow-300 font-bold animate-ping", style: { textShadow: "0 0 20px yellow" }, children: "CRITICAL!" }),
+          gameState.combo > 1 && /* @__PURE__ */ jsxs("div", { className: "text-xl md:text-3xl text-orange-400 font-bold mt-2 neon-red animate-bounce", style: { textShadow: "0 0 10px orange" }, children: [
+            gameState.combo,
+            " COMBO!"
+          ] })
+        ] }),
+        (feedback === "wrong" || feedback === "timeout") && /* @__PURE__ */ jsx("div", { className: "absolute inset-0 bg-red-500/20 z-30 pointer-events-none animate-pulse", children: feedback === "timeout" && /* @__PURE__ */ jsx("div", { className: "absolute inset-0 flex items-center justify-center", children: /* @__PURE__ */ jsx("div", { className: "text-3xl md:text-4xl text-red-500 font-bold bg-black/80 px-4 py-2 rounded border-2 border-red-500 neon-red", children: "TIME UP" }) }) })
+      ] }),
+      /* @__PURE__ */ jsxs("div", { className: "bg-black border-t-2 border-cyan-900 p-1 pb-safe z-20 shrink-0", children: [
+        /* @__PURE__ */ jsx("div", { className: "text-center py-1 mb-1 bg-gray-900 rounded border border-gray-700 shadow-inner min-h-[44px] flex items-center justify-center", children: currentProblem && /* @__PURE__ */ jsx(MathLabel, { latex: currentProblem.latex, className: "text-sm md:text-lg text-white neon-blue", displayMode: true }) }),
+        /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-center gap-1 md:gap-2 mb-1", children: [
+          /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-0.5", children: [
+            /* @__PURE__ */ jsx("div", { className: "text-gray-400 text-xs md:text-sm", children: /* @__PURE__ */ jsx(MathLabel, { latex: "r=" }) }),
+            /* @__PURE__ */ jsx("div", { onClick: () => setActiveField("r"), className: cn("h-9 w-14 md:w-16 bg-gray-800 border-2 rounded flex items-center justify-center text-base md:text-lg cursor-pointer transition-colors", activeField === "r" ? "border-cyan-400 text-white shadow-[0_0_10px_cyan]" : "border-gray-600 text-gray-400"), children: inputR === "" ? /* @__PURE__ */ jsx("span", { className: "animate-pulse text-gray-600", children: "_" }) : /* @__PURE__ */ jsx(MathLabel, { latex: inputR }) })
+          ] }),
+          /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-0.5 bg-gray-900/50 p-0.5 rounded border border-gray-800 relative z-10", children: [
+            /* @__PURE__ */ jsx("div", { className: "text-gray-400 text-xs md:text-sm", children: /* @__PURE__ */ jsx(MathLabel, { latex: "\\sin(\\theta" }) }),
+            /* @__PURE__ */ jsx("button", { onClick: toggleOperator, className: "h-7 w-8 md:w-10 bg-gray-800 border-2 rounded flex items-center justify-center text-sm md:text-base cursor-pointer transition-colors mx-0.5 border-green-400 text-white shadow-[0_0_5px_lime] active:scale-95 z-20", children: inputOperator === "+" ? /* @__PURE__ */ jsx(Plus, { size: 16 }) : /* @__PURE__ */ jsx(Minus, { size: 16 }) }),
+            /* @__PURE__ */ jsx("div", { onClick: () => setActiveField("alpha"), className: cn("h-9 w-14 md:w-16 bg-gray-800 border-2 rounded flex items-center justify-center text-base md:text-lg cursor-pointer transition-colors relative z-20", activeField === "alpha" ? "border-purple-400 text-white shadow-[0_0_10px_purple]" : "border-gray-600 text-gray-400"), children: inputAlpha === "" ? /* @__PURE__ */ jsx("span", { className: "animate-pulse text-gray-600", children: "?" }) : /* @__PURE__ */ jsx(MathLabel, { latex: inputAlpha }) }),
+            /* @__PURE__ */ jsx("div", { className: "text-gray-400 text-xs md:text-sm", children: ")" })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsx(Keypad, { mode: activeField, onPress: handleKeyPress, onDelete: handleDelete, onSubmit: checkAnswer })
+      ] })
+    ] })
+  ] });
+}
+export {
+  App as default
+};
+
+
+    import React from 'react';
+    import { createRoot } from 'react-dom/client';
     const root = createRoot(document.getElementById('root'));
-    root.render(<App />);
-    
+    root.render(React.createElement(App, null));
   </script>
 </body>
 </html>
